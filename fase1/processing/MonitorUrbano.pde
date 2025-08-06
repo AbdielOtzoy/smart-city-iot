@@ -26,18 +26,79 @@ color okGreen      = color(40, 167, 69);
 PFont mainFont;
 PFont titleFont;
 
-
 void setup() {
   size(1280, 720);
   smooth(8);
   mainFont = createFont("Arial", 16, true);
   titleFont = createFont("Arial Bold", 20, true);
+  
+  // Inicializar conexión serial con Arduino
+  initSerial();
+  
+  // Mostrar estado de conexión en consola
+  println("=== MONITOR URBANO INICIADO ===");
+  println("Estado de conexión: " + getSystemStatus());
+  println("Navegación: Usa las teclas 1-4 para cambiar de vista");
+  println("================================");
 }
 
 void draw() {
   background(bgDark);
+  
+  // Dibujar interfaz
   drawNavigation(); // Definida en Componentes.pde
+  drawConnectionStatus(); // Mostrar estado de conexión
   drawMainContent();  // Llama al enrutador de vistas
+  
+  if (serialConnected) {
+    updateSerialData(); // Si hay conexión, procesa los datos reales.
+  } else if (modoSimulacion) {
+    // Si no hay conexión, activa la simulación.
+    if (millis() - ultimoTiempoSimulacion > INTERVALO_SIMULACION) {
+      generarDatosSimulados();
+      ultimoTiempoSimulacion = millis();
+    }
+  }
+}
+
+/**
+ * Dibuja el indicador de estado de conexión en la esquina superior derecha
+ */
+void drawConnectionStatus() {
+  // Posición en esquina superior derecha
+  float x = width - 800;
+  float y = 10;
+   
+  // Indicador visual y texto de estado
+  String status = getSystemStatus();
+  color statusColor;
+  
+  switch(status) {
+    case "Conectado":
+      statusColor = okGreen;
+      break;
+    case "Sin datos":
+      statusColor = warnYellow;
+      break;
+    default:
+      statusColor = alertRed;
+  }
+  
+  // Círculo indicador
+  fill(statusColor);
+  noStroke();
+  circle(x + 65, y + 17, 8);
+  
+  // Texto de estado
+  fill(statusColor);
+  text(status, x + 75, y + 25);
+  
+  // Mostrar número de alertas activas      
+  int alertasCount = getAlertasRecientes().size();
+  if (alertasCount > 0) {
+    fill(alertRed);
+    text("(" + alertasCount + " alertas)", x + 75, y + 40);
+  }
 }
 
 /**
@@ -65,4 +126,46 @@ void keyPressed() {
   if (key >= '1' && key <= '4') {
     currentScreen = key - '0';
   }
+  
+  // Funciones de debug/testing
+  if (key == 'r' || key == 'R') {
+    // Reiniciar conexión serial
+    println("Reiniciando conexión serial...");
+    if (arduino != null) {
+      arduino.stop();
+    }
+    initSerial();
+  }
+  
+  if (key == 'd' || key == 'D') {
+    // Mostrar datos de debug en consola
+    println("\n=== DEBUG INFO ===");
+    println("Sistema activo: " + isSerialConnected());
+    println("Semáforos estado:");
+    for (int i = 1; i <= 10; i++) {
+      println("  Semáforo " + i + ": " + getSemaforoEstado(i));
+    }
+    println("Buses distancia:");
+    for (int i = 1; i <= 4; i++) {
+      println("  Parada " + i + " (" + getBusTipo(i) + "): " + getBusDistancia(i) + "cm");
+    }
+    println("Incendios:");
+    for (int i = 1; i <= 2; i++) {
+      println("  Lugar " + i + ": " + getIncendioNivel(i) + " - " + getIncendioEstado(i));
+    }
+    println("Alertas recientes: " + getAlertasRecientes().size());
+    println("==================\n");
+  }
+}
+
+/**
+ * Se ejecuta cuando se cierra la aplicación
+ */
+void exit() {
+  // Cerrar conexión serial limpiamente
+  if (arduino != null) {
+    arduino.stop();
+    println("Conexión serial cerrada.");
+  }
+  super.exit();
 }
