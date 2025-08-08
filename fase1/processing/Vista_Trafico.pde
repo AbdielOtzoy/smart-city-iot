@@ -9,19 +9,18 @@
 void drawTrafficView() {
   drawTitledPanel("Panel de Tráfico y Semáforos", 50, 100, width - 100, height - 150);
 
-  // --- CONFIGURACIÓN DE LA CUADRÍCULA DINÁMICA ---
-  int totalSemaforos = 10; // El sistema gestiona 10 semáforos
-  
+  int totalSemaforos = 11; // Ahora son 11 semáforos
+
   // Dimensiones para cada elemento en la cuadrícula
-  int itemWidth = 160;   // Ancho reservado para cada semáforo (incluye espaciado)
-  int itemHeight = 210;  // Alto reservado para cada semáforo (incluye espaciado)
-  
+  int itemWidth = 160;
+  int itemHeight = 210;
+
   // Márgenes internos del panel
   int panelMarginX = 120;
   int panelMarginY = 200;
 
-  // Calcula cuántos semáforos caben en una fila, asegurando al menos 1
-  int semaphoresPerRow = max(1, (width - panelMarginX * 2) / itemWidth);
+  // Calcula cuántos semáforos caben en una fila (máximo 6 por fila)
+  int semaphoresPerRow = min(6, max(1, (width - panelMarginX * 2) / itemWidth));
 
   // --- DIBUJO DINÁMICO DE SEMÁFOROS EN CUADRÍCULA ---
   for (int i = 0; i < totalSemaforos; i++) {

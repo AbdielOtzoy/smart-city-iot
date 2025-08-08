@@ -6,6 +6,12 @@
 // - Fomentar la reutilización de código para elementos comunes.    //
 // ================================================================ //
 
+// Variables globales para navegación
+float[] navButtonX = new float[4];
+float navButtonY = 15;
+float navButtonW = 110;
+float navButtonH = 30;
+
 void drawNavigation() {
   fill(panelBg);
   noStroke();
@@ -17,9 +23,10 @@ void drawNavigation() {
   String[] labels = {"Tráfico", "Transporte", "Ambiental", "Alertas"};
   for (int i = 0; i < labels.length; i++) {
     float x = width - 500 + (i * 120);
+    navButtonX[i] = x - 10; // Guarda la posición X del botón
     if (currentScreen == i + 1) {
       fill(accentBlue);
-      rect(x - 10, 15, 110, 30, 15);
+      rect(x - 10, navButtonY, navButtonW, navButtonH, 15);
       fill(textPrimary);
     } else {
       fill(textSecondary);
@@ -28,6 +35,18 @@ void drawNavigation() {
     textFont(mainFont);
     text(labels[i], x + 45, 30);
   }
+}
+
+// Detecta clics en los botones de navegación
+void mousePressed() {
+  for (int i = 0; i < 4; i++) {
+    if (mouseY >= navButtonY && mouseY <= navButtonY + navButtonH &&
+        mouseX >= navButtonX[i] && mouseX <= navButtonX[i] + navButtonW) {
+      currentScreen = i + 1;
+      break;
+    }
+  }
+  // ...existing code for otros mousePressed si existen...
 }
 
 void drawTitledPanel(String title, float x, float y, float w, float h) {

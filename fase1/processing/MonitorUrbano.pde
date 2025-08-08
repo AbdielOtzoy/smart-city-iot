@@ -114,7 +114,7 @@ void drawMainContent() {
       drawBusView(); // En Vista_Transporte.pde
       break;
     case 3:
-      drawEnvironmentalView(); // En Vista_Ambiental.pde
+      drawAmbientalView(); // En Vista_Ambiental.pde
       break;
     case 4:
       drawAlertsView(); // En Vista_Alertas.pde
