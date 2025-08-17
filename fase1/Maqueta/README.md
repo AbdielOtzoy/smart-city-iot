@@ -39,3 +39,20 @@ Este documento detalla la participación de los integrantes en la construcción 
 
 4. **Botones de pánico**  
    Elaboró la base para la instalación de los botones de pánico.
+
+
+## Aportaciones Jhonatan Tubac 
+1. **Semana 1**
+   #### Creación de bocetos 2d y 3d de centros históricos 
+   1. **Boceto 3d**
+      Elaboración de un boceto 3d para una mejor perspectiva de los centros históricos
+   
+   2. **Creación de boceto 2d para medidas**
+      1. Elaboración de un boceto 2d de los centros con las medidas para después llevarlo a la parte física.
+      2. **medidas palacio**
+      https://www.figma.com/design/BPz6r7kFakuF9sJZayoqmz/Boceto_PalacioBiblioteca?node-id=0-1&t=Rb5hFH9R2BZv8V5C-1
+      3. **medidas biblioteca**
+      https://www.figma.com/design/BPz6r7kFakuF9sJZayoqmz/Boceto_PalacioBiblioteca?node-id=4-74&t=Rb5hFH9R2BZv8V5C-1
+   
+   3. **Elaboración de centros históricos**
+      1. Realización de las maquetas físicas de los centros históricos
