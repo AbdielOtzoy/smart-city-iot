@@ -42,7 +42,7 @@ const int mqPinA0 = A0;
 const int mqPinA1 = A1;  
 const int mqPinA2 = A2;  
 float mqReadings[3];  
-const float mqThreshold = 95.0; // AQUÍ ESTÁ EL UMBRAL PARA LOS MQ --- RECORDEMOS TESTEARLO --- 
+const float mqThreshold = 320.0; // AQuí ESTÁ EL UMBRAL PARA LOS MQ --- RECORDEMOS TESTEARLO --- 
 
 // Piezos eléctricos
 const int piezoPin = 20;
@@ -191,7 +191,7 @@ void leerMQSensors() {
 // Nueva función: verifica lecturas MQ y activa alarmas tipo 4 si están por debajo del umbral
 void verificarMQYActivar() {
   for (int z = 0; z < 3; z++) {
-    if (mqReadings[z] < mqThreshold) {
+    if (mqReadings[z] > mqThreshold) {
       ActivarBuzzZonaConTipo(z, 4);
       Serial.print("Alerta MQ bajo en zona "); Serial.print(z + 1); Serial.println(" (Tipo 4)");
     }
@@ -337,8 +337,8 @@ void enviarDatosAProcessing() {
   Serial.println("SEMAFORO:10:" + semEstados[estadoActualSem2]);
 
   // Enviar BUS usamos distancias[5] y [6] como ejemplo, HAY QUE MEJORAR ESTO PARA LEER POSICIÓN
-  int busDist1 = (int)(distancias[5] * 10); // TRANSMETRO
-  int busDist2 = (int)(distancias[6] * 10); // TRANSURBANO
+  int busDist1 = (int)(distancias[3]); // TRANSMETRO
+  int busDist2 = (int)(distancias[0]); // TRANSURBANO
   Serial.println("BUS:TRANSMETRO:1:" + String(busDist1));
   Serial.println("BUS:TRANSURBANO:2:" + String(busDist2));
 
