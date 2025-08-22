@@ -1,0 +1,144 @@
+// ================================================================ //
+//             VISTA 4: ALERTAS (Vista_Alertas.pde)                 //
+// ================================================================ //
+
+// Definiciones de color adicionales (sin duplicar las globales)
+color accentRed = color(220, 40, 40);
+color accentYellow = color(255, 220, 40);
+color accentOrange = color(255, 140, 20);
+color accentPurple = color(160, 80, 200);
+color accentCyan = color(40, 200, 220);
+color accentPink = color(255, 100, 150);
+color warningAmber = color(255, 180, 0);
+color emergencyRed = color(200, 20, 20);
+color infoBlue = color(60, 120, 200);
+
+void drawAlertsView() {
+  drawTitledPanel("Panel de Alertas del Sistema", 50, 100, width - 100, height - 150);
+  
+  // Fondo de la consola
+  fill(bgDark);
+  rect(80, 160, width - 160, height - 240, 10);
+  
+  // Encabezado con contador de alertas
+  int totalAlertas = getAlertasRecientes().size();
+  fill(accentRed);
+  textAlign(CENTER, CENTER);
+  textFont(titleFont);
+  text("Alertas recientes (" + totalAlertas + ")", width/2, 140);
+  
+  // Mostrar todas las alertas recientes
+  ArrayList<String> alertas = getAlertasRecientes();
+  int y = 180;
+  textFont(mainFont);
+  textAlign(LEFT, TOP);
+  
+  for (int i = 0; i < alertas.size(); i++) {
+    String alerta = alertas.get(i);
+    
+    // Colorear según tipo de alerta con más variedad
+    if (alerta.contains("PÁNICO") || alerta.contains("🚨")) {
+      fill(emergencyRed);
+    } else if (alerta.contains("INCENDIO") || alerta.contains("🔥")) {
+      fill(accentOrange);
+    } else if (alerta.contains("SISMO") || alerta.contains("🌎")) {
+      fill(accentPurple);
+    } else if (alerta.contains("INFRACCIÓN") || alerta.contains("INFRACCION")) {
+      fill(accentYellow);
+    } else if (alerta.contains("VELOCIDAD") || alerta.contains("EXCESO")) {
+      fill(warningAmber);
+    } else if (alerta.contains("ACCIDENTE") || alerta.contains("CHOQUE")) {
+      fill(accentRed);
+    } else if (alerta.contains("ROBO") || alerta.contains("ASALTO")) {
+      fill(accentPink);
+    } else if (alerta.contains("TRÁFICO") || alerta.contains("TRAFICO")) {
+      fill(accentCyan);
+    } else if (alerta.contains("MANTENIMIENTO") || alerta.contains("SERVICIO")) {
+      fill(infoBlue);
+    } else if (alerta.contains("EMERGENCIA") || alerta.contains("⚠️")) {
+      fill(accentRed);
+    } else if (alerta.contains("INFO") || alerta.contains("ℹ️")) {
+      fill(okGreen); // okGreen debe estar definida globalmente
+    } else if (alerta.contains("AVISO") || alerta.contains("NOTA")) {
+      fill(accentCyan);
+    } else if (alerta.contains("CRÍTICO") || alerta.contains("CRITICO")) {
+      fill(emergencyRed);
+    } else if (alerta.contains("MODERADO") || alerta.contains("MEDIO")) {
+      fill(warningAmber);
+    } else if (alerta.contains("LEVE") || alerta.contains("MENOR")) {
+      fill(infoBlue);
+    } else {
+      fill(textPrimary);
+    }
+    
+    text(alerta, 100, y);
+    y += 28;
+    
+    if (y > height - 100) break; // No sobrepasar el panel
+  }
+  
+  // Leyenda de colores (opcional)
+  drawColorLegend();
+}
+
+void drawColorLegend() {
+  float legendX = width - 300;
+  float legendY = height - 130;
+  int legendWidth = 250;
+  int legendHeight = 100;
+  
+  // Fondo de la leyenda
+  fill(panelBg);
+  strokeWeight(1);
+  rect(legendX, legendY, legendWidth, legendHeight, 5);
+  noStroke();
+  
+  // Título de la leyenda
+  fill(textPrimary);
+  textAlign(LEFT, TOP);
+  textFont(titleFont);
+  text("Tipos de Alertas:", legendX + 10, legendY + 10);
+  
+  // Items de la leyenda
+  textFont(mainFont);
+  int itemY = int(legendY + 35);
+  int lineHeight = 15;
+  
+  // Críticas
+  fill(emergencyRed);
+  ellipse(legendX + 15, itemY, 8, 8);
+  fill(textSecondary);
+  text("Críticas", legendX + 25, itemY - 5);
+  
+  // Advertencias
+  itemY += lineHeight;
+  fill(warningAmber);
+  ellipse(legendX + 15, itemY, 8, 8);
+  fill(textSecondary);
+  text("Advertencias", legendX + 25, itemY - 5);
+  
+  // Información
+  itemY += lineHeight;
+  fill(infoBlue);
+  ellipse(legendX + 15, itemY, 8, 8);
+  fill(textSecondary);
+  text("Información", legendX + 25, itemY - 5);
+  
+  // Tráfico
+  fill(accentCyan);
+  ellipse(legendX + 130, int(legendY + 35), 8, 8);
+  fill(textSecondary);
+  text("Tráfico", legendX + 140, int(legendY + 30));
+  
+  // Emergencias
+  fill(accentOrange);
+  ellipse(legendX + 130, int(legendY + 50), 8, 8);
+  fill(textSecondary);
+  text("Emergencias", legendX + 140, int(legendY + 45));
+  
+  // Seguridad
+  fill(accentPink);
+  ellipse(legendX + 130, int(legendY + 65), 8, 8);
+  fill(textSecondary);
+  text("Seguridad", legendX + 140, int(legendY + 60));
+}
