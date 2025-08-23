@@ -57,7 +57,7 @@ Los avances mas importantes fueron:
 * Ajusto pequeños errores en la visualizacion de alertas en el panel de monitoreo.
 * Colaboro en la conexion de los botones de panico al circuito principal.
 
-#### **GABRIEL ANDRES MELGAR ARAGoN**
+#### **GABRIEL ANDRES MELGAR ARAGON**
 
 * Superviso la colocacion y orientacion de los sensores de gas y presion.
 * Apoyo en la reorganizacion de cables dentro de la maqueta.
@@ -129,6 +129,5 @@ Los avances mas importantes fueron:
 ### Evidencia Fotografica
 
 ![Avance general de la maqueta](img/week2.1.jpeg)
-![Avance general de la maqueta](img/week2.2.jpeg)
 ![Avance general de la maqueta](img/week2.3.jpeg)
 ![Avance general de la maqueta](img/week2.4.jpeg)
