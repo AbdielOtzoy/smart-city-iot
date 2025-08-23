@@ -123,6 +123,20 @@ void drawMainContent() {
 }
 
 void keyPressed() {
+  if (key == 'i') {
+      viajeActivo = true;
+      regresoActivo = false;
+      inicioViajeMillis = millis();
+      transmetroX = 300;
+      transurbanoX = 300;
+      println("Viaje iniciado");
+  }
+  if (key == 'o') {
+      regresoActivo = true;
+      viajeActivo = false;
+      inicioViajeMillis = millis();
+      println("Regreso iniciado");
+  }
   if (key >= '1' && key <= '4') {
     currentScreen = key - '0';
   }

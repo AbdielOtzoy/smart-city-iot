@@ -5,7 +5,7 @@
 // - Contener funciones de dibujo de bajo nivel (helpers).          //
 // - Fomentar la reutilización de código para elementos comunes.    //
 // ================================================================ //
-
+  
 // Variables globales para navegación
 float[] navButtonX = new float[4];
 float navButtonY = 15;

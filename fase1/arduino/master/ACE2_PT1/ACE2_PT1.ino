@@ -42,7 +42,7 @@ const int mqPinA0 = A0;
 const int mqPinA1 = A1;  
 const int mqPinA2 = A2;  
 float mqReadings[3];  
-const float mqThreshold = 320.0; // AQuí ESTÁ EL UMBRAL PARA LOS MQ --- RECORDEMOS TESTEARLO --- 
+const float mqThreshold = 260.0; // AQuí ESTÁ EL UMBRAL PARA LOS MQ --- RECORDEMOS TESTEARLO --- 
 
 // Piezos eléctricos
 const int piezoPin = 20;
@@ -193,7 +193,7 @@ void verificarMQYActivar() {
   for (int z = 0; z < 3; z++) {
     if (mqReadings[z] > mqThreshold) {
       ActivarBuzzZonaConTipo(z, 4);
-      Serial.print("Alerta MQ bajo en zona "); Serial.print(z + 1); Serial.println(" (Tipo 4)");
+      Serial.print("Alerta MQ bajo en zona "); Serial.print(z + 1); Serial.println(": (Tipo 4)");
     }
   }
 }
@@ -260,65 +260,49 @@ void gestionarBuzzers() {
 
 //Verifica distancias y activa buzzers según semáforo (con tipo 2), y setea flag para INFRACCION
 void verificarYActivarBuzzerPorZonas() {
-  // Zonas 0 1 y 2, HC04 1 2 y3 -> Semáforo1 en rojo (estado 0)
-  for (int z = 0; z < 3; z++) {
-    if (distancias[z] <= 3.0f) {
-      if (estadoActualSem1 == 0) { // rojo
-        // Mapeo: zona 0 -> Buzz[0] (Zona1), zona 1 -> Buzz[2] (Zona3), zona 2 -> Buzz[2] (Zona3)
+  // Semáforo 1 en rojo -> sensores 0, 1 y 6
+  if (estadoActualSem1 == 2) {
+    int sensoresSem1[] = {0, 1, 6};
+    for (int i = 0; i < 3; i++) {
+      int z = sensoresSem1[i];
+      if (distancias[z] <= 5.0f) {
+        // Aquí decides qué buzzer corresponde a cada sensor
         if (z == 0) {
-          ActivarBuzzZonaConTipo(0, 2); // Zona1, tipo 2
-          infraccionTriggered[z] = true; // Flag para enviar INFRACCION
-          Serial.print("Alerta por HC"); Serial.print(z + 1); Serial.println(" (Sem1 rojo, Tipo 2)");
+          ActivarBuzzZonaConTipo(0, 2); // Zona1
         } else if (z == 1) {
-          // Zona2 -> Buzz[2]
-          ActivarBuzzZonaConTipo(2, 2);
-          infraccionTriggered[z] = true;
-          Serial.print("Alerta por HC"); Serial.print(z + 1); Serial.println(" (Sem1 rojo, Tipo 2)");
-        } else if (z == 2) {
-          // Zona3 -> Buzz[2]
-          ActivarBuzzZonaConTipo(2, 2);
-          infraccionTriggered[z] = true;
-          Serial.print("Alerta por HC"); Serial.print(z + 1); Serial.println(" (Sem1 rojo, Tipo 2)");
+          ActivarBuzzZonaConTipo(1, 2); // Zona2
+        } else if (z == 6) {
+          ActivarBuzzZonaConTipo(2, 2); // Zona3
         }
+        infraccionTriggered[z] = true;
+        Serial.print("HCALERTA:"); Serial.print(z + 1); Serial.println(":1:2");
       }
     }
   }
 
-  // Zonas 3-6 (HC04 4-7) -> Semáforo2 en rojo 
-  for (int z = 3; z < 7; z++) {
-    if (distancias[z] <= 3.0f) {
-      if (estadoActualSem2 == 0) { // rojo
-        // Mapeo:
-        // HC04 4 -> Zona4 -> Buzz[0]
-        // HC04 5 -> Zona5 -> Buzz[1]
-        // HC04 6 -> Zona6 -> Buzz[1]
-        // HC04 7 -> Zona7 -> Buzz[2]
-        int localIndex = z - 3; // 0..3
-        if (localIndex == 0) {
-          // Zona4
-          ActivarBuzzZonaConTipo(0, 2);
-          infraccionTriggered[z] = true;
-          Serial.print("Alerta por HC"); Serial.print(z + 1); Serial.println(" (Sem2 rojo, Tipo 2)");
-        } else if (localIndex == 1) {
-          // Zona5
-          ActivarBuzzZonaConTipo(1, 2);
-          infraccionTriggered[z] = true;
-          Serial.print("Alerta por HC"); Serial.print(z + 1); Serial.println(" (Sem2 rojo, Tipo 2)");
-        } else if (localIndex == 2) {
-          // Zona6
-          ActivarBuzzZonaConTipo(1, 2);
-          infraccionTriggered[z] = true;
-          Serial.print("Alerta por HC"); Serial.print(z + 1); Serial.println(" (Sem2 rojo, Tipo 2)");
-        } else if (localIndex == 3) {
-          // Zona7
-          ActivarBuzzZonaConTipo(2, 2);
-          infraccionTriggered[z] = true;
-          Serial.print("Alerta por HC"); Serial.print(z + 1); Serial.println(" (Sem2 rojo, Tipo 2)");
+  // Semáforo 2 en rojo -> sensores 2, 3, 4, 5
+  if (estadoActualSem2 == 2) {
+    int sensoresSem2[] = {2, 3, 4, 5};
+    for (int i = 0; i < 4; i++) {
+      int z = sensoresSem2[i];
+      if (distancias[z] <= 5.0f) {
+        // Mapeo directo según zona
+        if (z == 2) {
+          ActivarBuzzZonaConTipo(0, 2); // Zona1
+        } else if (z == 3) {
+          ActivarBuzzZonaConTipo(1, 2); // Zona2
+        } else if (z == 4) {
+          ActivarBuzzZonaConTipo(1, 2); // Zona2 también
+        } else if (z == 5) {
+          ActivarBuzzZonaConTipo(2, 2); // Zona3
         }
+        infraccionTriggered[z] = true;
+        Serial.print("HCALERTA:"); Serial.print(z + 1); Serial.println(":2:2");
       }
     }
   }
 }
+
 
 //Envía todos los datos a Processing en el formato esperado
 void enviarDatosAProcessing() {
@@ -345,14 +329,9 @@ void enviarDatosAProcessing() {
   // Enviar INCENDIO 
   for (int i = 0; i < 2; i++) {
     int nivel = (int)mqReadings[i];
-    String estado = (mqReadings[i] < mqThreshold) ? "ALERTA" : "NORMAL";
+    String estado = (mqReadings[i] > mqThreshold) ? "ALERTA" : "NORMAL";
     Serial.println("INCENDIO:" + String(i + 1) + ":" + String(nivel) + ":" + estado);
   }
-
-  // Enviar HUMO 
-  int humoNivel = (int)mqReadings[2];
-  String humoEstado = (mqReadings[2] < mqThreshold) ? "ALERTA" : "NORMAL";
-  Serial.println("HUMO:" + String(humoNivel) + ":" + humoEstado);
 
   // Enviar SISMO 
   String nivelSismo = (millis() - sismoTime < 10000) ? "ALTO" : "BAJO";
@@ -392,9 +371,7 @@ void loop() {
   
   // Leer sensores MQ
   leerMQSensors();
-  Serial.print("MQ0: "); Serial.print(mqReadings[0]);
-  Serial.print(" | MQ1: "); Serial.print(mqReadings[1]);
-  Serial.print(" | MQ2: "); Serial.println(mqReadings[2]);
+  Serial.println("MQA:"+String(mqReadings[0])+":"+String(mqReadings[1])+":"+String(mqReadings[2]));
 
   // Verificar y activar alarmas para MQ (tipo 4)
   verificarMQYActivar();

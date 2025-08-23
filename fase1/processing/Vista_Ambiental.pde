@@ -5,66 +5,82 @@
 void drawAmbientalView() {
   drawTitledPanel("Monitoreo Ambiental", 50, 100, width - 100, height - 150);
 
-  // --- Panel de humo MQ-02 ---
-  int humo = getHumoNivel();
-  String estadoHumo = getHumoEstado();
-  float porcentaje = constrain(humo / 10.0, 0, 100);
+  // --- Valores MQ ---
+  println(mq1L);
+  println(mq2L);
+  println(mq3L);
 
+  int maxLevel = 300;
+
+  // Panel fondo
   fill(panelBg);
-  rect(80, 160, 400, 400, 30);
+  rect(80, 160, width - 160, 500, 30);
 
   fill(textPrimary);
   textFont(titleFont);
   textAlign(LEFT, TOP);
   text("Monitoreo Ambiental", 100, 180);
 
-  // Elimina texto encima del gráfico circular
-  // textFont(mainFont);
-  // textAlign(CENTER, CENTER);
-  // text("Nivel de Humo", 280, 230);
+  // --- Indicadores de cada sensor (más pequeños y centrados) ---
+  drawIndicadorCircular("MQ-01", mq1L, maxLevel, 330, 350, 160);
+  drawIndicadorCircular("MQ-02", mq2L, maxLevel, width/2, 350, 160);
+  drawIndicadorCircular("MQ-03", mq3L, maxLevel, width - 330, 350, 160);
 
-  // Gráfico circular
-  strokeWeight(18);
-  stroke(estadoHumo.equals("ALERTA") ? accentOrange : accentGreen);
-  noFill();
-  arc(280, 370, 260, 260, PI + QUARTER_PI, PI + QUARTER_PI + TWO_PI * porcentaje / 100);
-
-  noStroke();
-  fill(textPrimary);
-  textFont(titleFont);
-  textAlign(CENTER, CENTER);
-  text(nf(porcentaje, 0, 1) + "%", 280, 370);
-
-  // Estado
-  textFont(mainFont);
-  fill(estadoHumo.equals("ALERTA") ? accentOrange : accentGreen);
-  textAlign(CENTER, CENTER);
-  text(estadoHumo, 280, 410);
-
-  // --- Banner de sismo ---
+  // --- Banner de sismo (reubicado abajo, centrado) ---
   fill(isSismoActivo() ? accentRed : accentGreen);
-  rect(540, 220, 400, 260, 25);
+  rect(width/2 - 300, 500, 600, 140, 25);
 
   fill(255);
   textFont(titleFont);
   textAlign(CENTER, TOP);
   if (isSismoActivo()) {
-    text("¡ALERTA SÍSMICA!", 740, 240);
+    text("¡ALERTA SÍSMICA!", width/2, 520);
     stroke(255);
-    strokeWeight(7);
+    strokeWeight(6);
     noFill();
     beginShape();
-    vertex(600, 370); vertex(650, 320); vertex(700, 370); vertex(750, 320); vertex(800, 370); vertex(870, 320);
+    vertex(width/2 - 200, 580); 
+    vertex(width/2 - 150, 540); 
+    vertex(width/2 - 100, 580); 
+    vertex(width/2 - 50, 540); 
+    vertex(width/2, 580); 
+    vertex(width/2 + 50, 540);
     endShape();
     noStroke();
   } else {
-    text("Estado Sísmico: NORMAL", 740, 240);
+    text("Estado Sísmico: NORMAL", width/2, 520);
     stroke(255);
-    strokeWeight(7);
+    strokeWeight(6);
     noFill();
     beginShape();
-    vertex(650, 370); vertex(720, 370); vertex(770, 320);
+    vertex(width/2 - 100, 580); 
+    vertex(width/2, 580); 
+    vertex(width/2 + 50, 540);
     endShape();
     noStroke();
   }
+}
+
+// ================================================================ //
+//   FUNCIÓN AUXILIAR PARA DIBUJAR INDICADOR CIRCULAR               //
+// ================================================================ //
+void drawIndicadorCircular(String label, float valor, int maxLevel, float x, float y, float size) {
+  float porcentaje = constrain((valor / maxLevel) * 100, 0, 100);
+
+  // arco de progreso
+  strokeWeight(14);
+  noFill();
+  stroke(accentGreen);
+  arc(x, y, size, size, PI + QUARTER_PI, PI + QUARTER_PI + TWO_PI * porcentaje / 100);
+
+  // texto porcentaje
+  noStroke();
+  fill(textPrimary);
+  textFont(titleFont);
+  textAlign(CENTER, CENTER);
+  text(nf(porcentaje, 0, 1) + "%", x, y);
+
+  // etiqueta debajo
+  textFont(mainFont);
+  text(label, x, y + size/2 + 20);
 }

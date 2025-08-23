@@ -40,7 +40,7 @@ import processing.serial.*;
 // --- CONFIGURACIÓN SERIAL ---
 Serial arduino;
 boolean serialConnected = false;
-String serialPort = ""; // Se detectará automáticamente
+String serialPort = "COM6"; // Se detectará automáticamente
 int baudRate = 9600;
 
 // --- MODO DE SIMULACIÓN (NUEVO) ---
@@ -91,6 +91,10 @@ int humoNivel = 0; // Valor del sensor MQ-02 (0-1000)
 String humoEstado = "NORMAL"; // "NORMAL" o "ALERTA"
 long humoUltimaActualizacion = 0;
 
+float mq1L = 0;
+float mq2L = 0;
+float mq3L = 0;
+
 // ================================================================ //
 //        FUNCIONES PRINCIPALES DE PROCESSING (setup y draw)        //
 // ================================================================ //
@@ -121,7 +125,7 @@ void initSerial() {
 
   if (!serialPort.equals("")) {
     try {
-      arduino = new Serial(this, serialPort, baudRate);
+      arduino = new Serial(this, "COM6", baudRate);
       serialConnected = true;
       modoSimulacion = false;
       println("✓ Conexión serial establecida en: " + serialPort);
@@ -235,18 +239,6 @@ void parseArduinoData(String data) {
         }
         println("[DEBUG] Bus actualizado: tipo=" + parts[1] + " id=" + parts[2] + " distancia=" + parts[3]);
         break;
-      case "HUMO":
-        // HUMO:NIVEL:ESTADO
-        if (parts.length >= 3) {
-          humoNivel = Integer.parseInt(parts[1]);
-          humoEstado = parts[2];
-          humoUltimaActualizacion = millis();
-          if (humoEstado.equals("ALERTA") || humoNivel > 700) {
-            agregarAlerta("🔥 ALERTA DE HUMO/MQ-02: Nivel " + humoNivel);
-          }
-        }
-        println("[DEBUG] Humo procesado: nivel=" + parts[1] + " estado=" + parts[2]);
-        break;
       case "SISMO":
         // SISMO:NIVEL:TIMESTAMP
         if (parts.length >= 3) {
@@ -275,6 +267,31 @@ void parseArduinoData(String data) {
           }
         }
         println("[DEBUG] Incendio procesado: id=" + parts[1] + " nivel=" + parts[2] + " estado=" + parts[3]);
+        break;
+      case "PANICO":
+        // PANICO:ID:NIVEL
+        if (parts.length >= 3) {
+          int id = Integer.parseInt(parts[1]) - 1;
+          int nivel = Integer.parseInt(parts[2]);
+          agregarAlerta("🔥 PANICO en Lugar Histórico " + (id + 1) + " (Nivel: " + nivel + ")");
+        }
+        break;
+      case "INFRACCION":
+        // INFRACCION:ID:TIEMPO
+        int id = Integer.parseInt(parts[1]) - 1;
+        int tiempo = Integer.parseInt(parts[2]);
+        agregarAlerta("🔥 INFRACCION DETECTADA EN HC: " + id + " EN EL TIEMPO: " + tiempo/1000);
+      
+        break;
+      case "MQA":
+        // MQA:mq1:mq2:mq3
+        float mq1 = Float.parseFloat(parts[1]);
+        float mq2 = Float.parseFloat(parts[2]);
+        float mq3 = Float.parseFloat(parts[3]);
+        println(mq1 + " " + mq2 + " " + mq3);
+        mq1L = mq1;
+        mq2L = mq2;
+        mq3L = mq3;
         break;
      
     }
@@ -306,7 +323,7 @@ void generarDatosSimulados() {
   }
 
   // 2. Simular movimiento de buses entre paradas
-  float dt = (busUltimoMovimiento == 0) ? 0 : (timestamp - busUltimoMovimiento) / 1000.0; // segundos
+  float dt = (busUltimoMovimiento == 0) ? 0 : (timestamp - busUltimoMovimiento) / 1000; // segundos
   busUltimoMovimiento = timestamp;
 
   // Transmetro (verde) - bidireccional
@@ -580,12 +597,6 @@ int getBusDireccion(int parada) {
 }
 
 // NUEVO: Getters para el panel ambiental
-int getHumoNivel() {
-  return humoNivel;
-}
-String getHumoEstado() {
-  return humoEstado;
-}
 long getHumoUltimaActualizacion() {
   return humoUltimaActualizacion;
 }

@@ -2,6 +2,15 @@
 //           VISTA 2: TRANSPORTE (Vista_Transporte.pde)             //
 // ================================================================ //
 
+// --- Variables globales para el viaje ---
+boolean viajeActivo = false;
+boolean regresoActivo = false;
+
+float transmetroX = 300;
+float transurbanoX = 300;
+int inicioViajeMillis;
+
+// ================================================================ //
 void drawBusView() {
   drawTitledPanel("Mapa de Ruta de Transporte Público", 50, 100, width - 100, height - 150);
 
@@ -22,132 +31,77 @@ void drawBusView() {
   drawBusStop(900, 300, "🚏 Parada Final");
   drawBusStop(300, 300, "🚏 Parada Inicial");
 
-  // --- Movimiento de buses usando distancia simulada y dirección ---
-  // Transmetro (verde)
+  // --- Movimiento automático ---
+  if (viajeActivo) {
+    int elapsed = millis() - inicioViajeMillis;
+
+    // Transmetro → 10 segundos
+    float t1 = constrain(map(elapsed, 0, 10000, 300, 900), 300, 900);
+    transmetroX = t1;
+
+    // Transurbano → 20 segundos
+    float t2 = constrain(map(elapsed, 0, 20000, 300, 900), 300, 900);
+    transurbanoX = t2;
+  }
+
+  // --- Movimiento de regreso ---
+  if (regresoActivo) {
+    int elapsed = millis() - inicioViajeMillis;
+
+    // Transmetro → 10 segundos (de 900 → 300)
+    float t1 = constrain(map(elapsed, 0, 10000, 900, 300), 300, 900);
+    transmetroX = t1;
+
+    // Transurbano → 20 segundos (de 900 → 300)
+    float t2 = constrain(map(elapsed, 0, 20000, 900, 300), 300, 900);
+    transurbanoX = t2;
+  }
+
+  // --- Dibujar Transmetro (verde) ---
   float transmetroY = 190;
-  float transmetroDist = getBusDistancia(1);
-  int transmetroDir = getBusDireccion(1);
-  float transmetroX;
-  String transmetroDestino;
-  boolean transmetroEnDestino = false;
+  drawBus(transmetroX, transmetroY, alerRed, "Transurbano");
 
-  if (transmetroDir == 1) {
-    transmetroDestino = "Parada Final";
-    transmetroX = map(transmetroDist, 100, 0, 300, 900);
-    transmetroEnDestino = transmetroDist <= 10;
-  } else if (transmetroDir == -1) {
-    transmetroDestino = "Parada Inicial";
-    transmetroX = map(100 - transmetroDist, 0, 100, 900, 300);
-    transmetroEnDestino = transmetroDist >= 90;
-  } else {
-    if (transmetroDist <= 10) {
-      transmetroX = 900;
-      transmetroDestino = "Parada Inicial";
-      transmetroEnDestino = true;
-    } else if (transmetroDist >= 90) {
-      transmetroX = 300;
-      transmetroDestino = "Parada Final";
-      transmetroEnDestino = true;
-    } else {
-      transmetroX = map(transmetroDist, 100, 0, 300, 900);
-      transmetroDestino = "Desconocido";
-    }
-  }
-
-  // --- Sombra y brillo animado en bus ---
-  float glow = 0;
-  if (transmetroEnDestino) glow = 30 + 20*sin(millis()/400.0);
-  fill(0, 80, 0, 60);
-  ellipse(transmetroX+25, transmetroY+30, 60+glow, 18+glow/2);
-
-  // --- Bus con borde y gradiente ---
-  for (int i = 0; i < 10; i++) {
-    fill(lerpColor(okGreen, color(255), i/10.0));
-    rect(transmetroX-2+i*0.4, transmetroY-2+i*0.2, 50-i*0.8, 20-i*0.4, 8);
-  }
-  stroke(0,80,0,80);
-  strokeWeight(2);
-  rect(transmetroX, transmetroY, 50, 20, 8);
-  noStroke();
-  fill(255);
-  rect(transmetroX + 5, transmetroY + 3, 12, 14, 2);
-  rect(transmetroX + 20, transmetroY + 3, 12, 14, 2);
-  rect(transmetroX + 35, transmetroY + 3, 12, 14, 2);
-
-  // --- Texto con sombra y color destino ---
-  fill(transmetroEnDestino ? accentBlue : textPrimary);
-  textAlign(LEFT, CENTER);
-  textFont(mainFont);
-  text("Transmetro", transmetroX, transmetroY - 20);
-  fill(textSecondary);
-  // Elimina las letras que se superponen con el bus y la ruta:
-   text("Próxima parada: " + transmetroDestino, transmetroX, transmetroY - 5);
-   text("Distancia: " + getBusDistancia(1) + " cm", transmetroX, transmetroY + 25);
-   text("Tiempo estimado: " + nf(getBusTiempoEstimado(1), 0, 1) + " s", transmetroX, transmetroY + 40);
-
-  // --- Transurbano (rojo) ---
+  // --- Dibujar Transurbano (rojo) ---
   float transurbanoY = 290;
-  float transurbanoDist = getBusDistancia(2);
-  int transurbanoDir = getBusDireccion(2);
-  float transurbanoX;
-  String transurbanoDestino;
-  boolean transurbanoEnDestino = false;
+  drawBus(transurbanoX, transurbanoY, okGreen, "Transmetro");
 
-  if (transurbanoDir == 1) {
-    transurbanoDestino = "Parada Final";
-    transurbanoX = map(transurbanoDist, 100, 0, 300, 900);
-    transurbanoEnDestino = transurbanoDist <= 10;
-  } else if (transurbanoDir == -1) {
-    transurbanoDestino = "Parada Inicial";
-    transurbanoX = map(100 - transurbanoDist, 0, 100, 900, 300);
-    transurbanoEnDestino = transurbanoDist >= 90;
-  } else {
-    if (transurbanoDist <= 10) {
-      transurbanoX = 900;
-      transurbanoDestino = "Parada Inicial";
-      transurbanoEnDestino = true;
-    } else if (transurbanoDist >= 90) {
-      transurbanoX = 300;
-      transurbanoDestino = "Parada Final";
-      transurbanoEnDestino = true;
-    } else {
-      transurbanoX = map(transurbanoDist, 100, 0, 300, 900);
-      transurbanoDestino = "Desconocido";
-    }
-  }
+  // --- Leyenda ---
+  drawLegend();
+}
 
-  // --- Sombra y brillo animado en bus ---
-  glow = 0;
-  if (transurbanoEnDestino) glow = 30 + 20*sin(millis()/400.0);
-  fill(80, 0, 0, 60);
-  ellipse(transurbanoX+25, transurbanoY+30, 60+glow, 18+glow/2);
+// ================================================================ //
+//   Dibujo de buses (compartido por ambos transportes)
+// ================================================================ //
+void drawBus(float x, float y, color baseColor, String label) {
+  // sombra
+  fill(red(baseColor), green(baseColor), blue(baseColor), 60);
+  ellipse(x+25, y+30, 60, 18);
 
-  // --- Bus con borde y gradiente ---
+  // bus gradiente
   for (int i = 0; i < 10; i++) {
-    fill(lerpColor(alertRed, color(255), i/10.0));
-    rect(transurbanoX-2+i*0.4, transurbanoY-2+i*0.2, 50-i*0.8, 20-i*0.4, 8);
+    fill(lerpColor(baseColor, color(255), i/10.0));
+    rect(x-2+i*0.4, y-2+i*0.2, 50-i*0.8, 20-i*0.4, 8);
   }
-  stroke(120,0,0,80);
+  stroke(baseColor, 80);
   strokeWeight(2);
-  rect(transurbanoX, transurbanoY, 50, 20, 8);
+  rect(x, y, 50, 20, 8);
   noStroke();
   fill(255);
-  rect(transurbanoX + 5, transurbanoY + 3, 12, 14, 2);
-  rect(transurbanoX + 20, transurbanoY + 3, 12, 14, 2);
-  rect(transurbanoX + 35, transurbanoY + 3, 12, 14, 2);
+  rect(x + 5, y + 3, 12, 14, 2);
+  rect(x + 20, y + 3, 12, 14, 2);
+  rect(x + 35, y + 3, 12, 14, 2);
 
-  // --- Texto con sombra y color destino ---
-  fill(transurbanoEnDestino ? accentBlue : textPrimary);
+  // etiqueta
+  fill(textPrimary);
   textAlign(LEFT, CENTER);
   textFont(mainFont);
-  text("Transurbano", transurbanoX, transurbanoY - 20);
-  fill(textSecondary);
-  // Elimina las letras que se superponen con el bus y la ruta:
-  text("Próxima parada: " + transurbanoDestino, transurbanoX, transurbanoY - 5);
-   text("Distancia: " + getBusDistancia(2) + " cm", transurbanoX, transurbanoY + 25);
-   text("Tiempo estimado: " + nf(getBusTiempoEstimado(2), 0, 1) + " s", transurbanoX, transurbanoY + 40);
+  text(label, x, y - 20);
+}
 
-  // --- Leyenda con iconos ---
+// ================================================================ //
+//   Leyenda
+// ================================================================ //
+void drawLegend() {
   float legendX = 300;
   float legendY = height - 120;
   fill(panelBg);
@@ -157,7 +111,7 @@ void drawBusView() {
   textFont(titleFont);
   text("Leyenda", legendX, legendY - 5);
 
-  // Línea Transmetro (verde gradiente)
+  // Línea Transmetro
   for (int i = 0; i < 10; i++) {
     stroke(lerpColor(okGreen, color(200,255,200), i/10.0));
     strokeWeight(6);
@@ -165,10 +119,9 @@ void drawBusView() {
   }
   noStroke();
   fill(textSecondary);
-  textFont(mainFont);
   text("Transmetro", legendX + 40, legendY + 15);
 
-  // Línea Transurbano (roja gradiente)
+  // Línea Transurbano
   for (int i = 0; i < 10; i++) {
     stroke(lerpColor(alertRed, color(255,200,200), i/10.0));
     strokeWeight(6);
@@ -178,7 +131,7 @@ void drawBusView() {
   fill(textSecondary);
   text("Transurbano", legendX + 160, legendY + 15);
 
-  // Paradas con icono
+  // Paradas
   fill(okGreen);
   ellipse(legendX + 15, legendY + 35, 12, 12);
   fill(textPrimary);
