@@ -35,17 +35,17 @@ class Trafico(BaseModel):
         }
 
 class Ambiente(BaseModel):
-    mq1: float
-    mq2: float
-    mq3: float
+    mq_sensors: list[dict[str, float]]
     timestamp: datetime
 
     class Config:
         json_schema_extra = {
             "example": {
-                "mq1": 120,
-                "mq2": 200,
-                "mq3": 250,
-                "timestamp": "2023-01-01T00:00:00Z"
+                "mq_sensors": [
+                    {"id": 0, "nivel": 248},
+                    {"id": 1, "nivel": 278},
+                    {"id": 2, "nivel": 19}
+                ],
+                "timestamp": "2025-09-02T14:44:50.553Z"
             }
         }

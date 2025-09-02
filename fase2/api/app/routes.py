@@ -18,7 +18,7 @@ async def get_alertas():
         Alerta(
             id=str(alerta["_id"]),
             tipo=alerta["tipo"],
-            data=alerta["data"],
+            data=str(alerta["data"]),
             timestamp=alerta["timestamp"]
         )
         for alerta in alertas
@@ -33,7 +33,7 @@ async def get_alertas_limit(limit: int):
         Alerta(
             id=str(alerta["_id"]),
             tipo=alerta["tipo"],
-            data=alerta["data"],
+            data=str(alerta["data"]),
             timestamp=alerta["timestamp"]
         )
         for alerta in alertas
@@ -46,7 +46,7 @@ async def get_trafico():
     if trafico:
         return [
             Trafico(
-                semaforos=estado["semaforos"],
+                semaforos=list(estado["semaforos"].values()),
                 timestamp=estado["timestamp"]
             )
             for estado in trafico
@@ -60,11 +60,9 @@ async def get_ambiente():
     if ambiente:
         return [
             Ambiente(
-                mq1=estado["mq1"],
-                mq2=estado["mq2"],
-                mq3=estado["mq3"],
+                mq_sensors=estado["mq_sensors"],
                 timestamp=estado["timestamp"]
             )
             for estado in ambiente
         ]
-    return []
+
