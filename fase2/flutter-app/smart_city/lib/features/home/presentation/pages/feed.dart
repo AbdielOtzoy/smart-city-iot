@@ -48,7 +48,7 @@ class _FeedPageState extends State<FeedPage> {
       error = null;
     });
     try {
-      final alertasRes = await http.get(Uri.parse('$baseUrl/alertas'));
+  final alertasRes = await http.get(Uri.parse('$baseUrl/alertas/60'));
       final traficoRes = await http.get(Uri.parse('$baseUrl/trafico'));
       final ambienteRes = await http.get(Uri.parse('$baseUrl/ambiente'));
       final newAlertas = jsonDecode(alertasRes.body);
@@ -73,7 +73,7 @@ class _FeedPageState extends State<FeedPage> {
 
   Future<void> fetchAlertas() async {
     try {
-      final alertasRes = await http.get(Uri.parse('$baseUrl/alertas'));
+  final alertasRes = await http.get(Uri.parse('$baseUrl/alertas/60'));
       final newAlertas = jsonDecode(alertasRes.body);
       bool hasNew = false;
       if ((newAlertas is List && newAlertas.isNotEmpty) && (data['alertas'] is List && data['alertas'].isNotEmpty)) {
@@ -132,7 +132,27 @@ class _FeedPageState extends State<FeedPage> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Alertas recientes', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text('Alertas recientes', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+                              ElevatedButton.icon(
+                                onPressed: () {
+                                  setState(() {
+                                    data['alertas'] = [];
+                                  });
+                                },
+                                icon: Icon(Icons.delete_forever),
+                                label: Text('Limpiar'),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color.fromARGB(161, 7, 105, 25),
+                                  foregroundColor: Colors.white,
+                                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                  textStyle: TextStyle(fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                            ],
+                          ),
                           const SizedBox(height: 8),
                           Row(
                             children: [
