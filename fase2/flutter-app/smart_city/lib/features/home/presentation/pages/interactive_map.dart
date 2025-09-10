@@ -68,6 +68,60 @@ class _InteractiveMapState extends State<InteractiveMap> with TickerProviderStat
   // Variables para guardar el progreso de animación cuando se pausa
   double savedAnimationProgress = 0.0;
   double savedBlueAnimationProgress = 0.0;
+  
+  // Variables para el sistema dinámico de tiempo y distancia del bus verde
+  Timer? _timeUpdateTimer;
+  int _currentTimeSeconds = 550; // Empezar con 3 minutos (180 segundos) para mejor sincronización
+  String _currentDistance = "116 cm";
+  bool _isAtRestartPosition = false;
+  
+  // Variables para el sistema dinámico de tiempo y distancia del bus azul
+  Timer? _blueTimeUpdateTimer;
+  int _blueCurrentTimeSeconds = 220; // Mismo tiempo inicial que el verde
+  String _blueCurrentDistance = "195 cm";
+  bool _blueIsAtRestartPosition = false;
+  
+  // Tiempos diferentes para cada segmento de recorrido del bus azul
+  final Map<int, int> _blueSegmentTimes = {
+    0: 220, // Tiempo desde posición 0 hasta posición 7 (tiempo actual)
+    7: 35, // Tiempo desde posición 7 hasta posición 8 (tiempo más corto)
+    8: 220, // Tiempo desde posición 8 hasta posición 0 (tiempo normal)
+  };
+  
+  // Segmentos donde el tiempo debe pausarse (no decrementar)
+  final Set<int> _bluePausedSegments = {8}; // Posición 8 a 0 no transcurre tiempo
+  
+  // Distancias por posición para el bus verde
+  final List<String> _greenBusDistances = [
+    "116 cm", // Posición 0 - Restart
+    "93 cm",  // Posición 1
+    "33 cm",  // Posición 2
+    "10 cm",  // Posición 3
+    "100 cm", // Posición 4 - Restart
+    "86 cm",  // Posición 5
+    "30 cm",  // Posición 6
+    "10 cm",  // Posición 7
+    "116 cm"  // Posición 8 - Restart
+  ];
+  
+  // Distancias por posición para el bus azul
+  final List<String> _blueBusDistances = [
+    "195 cm", // Posición 0 - Restart
+    "185 cm", // Posición 1
+    "152 cm", // Posición 2
+    "127 cm", // Posición 3
+    "60 cm",  // Posición 4
+    "35 cm",  // Posición 5
+    "10 cm",  // Posición 6
+    "15 cm",  // Posición 7 - Restart
+    "195 cm"  // Posición 8 - Restart
+  ];
+  
+  // Posiciones de restart (donde tiempo y distancia se reinician)
+  final Set<int> _restartPositions = {0, 4, 8};
+  
+  // Posiciones de restart para el bus azul
+  final Set<int> _blueRestartPositions = {0, 7, 8};
 
   @override
   void initState() {
@@ -101,6 +155,9 @@ class _InteractiveMapState extends State<InteractiveMap> with TickerProviderStat
     _animation.addStatusListener((status) {
       if (status == AnimationStatus.completed) {
         currentRouteIndex = (currentRouteIndex + 1) % route.length;
+        
+        // Actualizar distancia y tiempo para el bus verde
+        _updateGreenBusInfo();
         
         // Verificar si llegamos a una estación verde
         if (_isAtGreenStation()) {
@@ -139,6 +196,9 @@ class _InteractiveMapState extends State<InteractiveMap> with TickerProviderStat
     _blueAnimation.addStatusListener((status) {
       if (status == AnimationStatus.completed) {
         blueCurrentRouteIndex = (blueCurrentRouteIndex + 1) % blueRoute.length;
+        
+        // Actualizar distancia y tiempo para el bus azul
+        _updateBlueBusInfo();
         
         // Verificar si llegamos a una estación azul
         if (_isAtBlueStation()) {
@@ -239,6 +299,126 @@ class _InteractiveMapState extends State<InteractiveMap> with TickerProviderStat
     }
   }
 
+  // Métodos para el sistema dinámico de tiempo y distancia del bus verde
+  void _updateGreenBusInfo() {
+    setState(() {
+      _currentDistance = _greenBusDistances[currentRouteIndex];
+      
+      if (_restartPositions.contains(currentRouteIndex)) {
+        // En posición de restart, reiniciar temporizador a 3 minutos
+        _isAtRestartPosition = true;
+        _currentTimeSeconds = 550; // 3 minutos
+        _startTimeCountdown();
+      }
+    });
+  }
+  
+  void _startTimeCountdown() {
+    _timeUpdateTimer?.cancel();
+    
+    if (_isAtRestartPosition) {
+      // Esperar un momento antes de empezar el countdown
+      Timer(const Duration(milliseconds: 100), () {
+        _isAtRestartPosition = false;
+        _startRegularCountdown();
+      });
+    } else {
+      _startRegularCountdown();
+    }
+  }
+  
+  void _startRegularCountdown() {
+    _timeUpdateTimer = Timer.periodic(const Duration(milliseconds: 200), (timer) {
+      if (mounted && isAnimationRunning && !isAtStation) {
+        setState(() {
+          if (_currentTimeSeconds > 0) {
+            _currentTimeSeconds -= 15; // Decrementar 15 segundos cada 200ms para simular rapidez
+            if (_currentTimeSeconds < 0) {
+              _currentTimeSeconds = 0; // No permitir valores negativos
+            }
+          }
+        });
+      }
+    });
+  }
+  
+  String _formatTime(int seconds) {
+    if (_isAtRestartPosition) return "3:00"; // Mostrar 3:00 en restart
+    int minutes = seconds ~/ 60;
+    int remainingSeconds = seconds % 60;
+    return "$minutes:${remainingSeconds.toString().padLeft(2, '0')}";
+  }
+  
+  String _getCurrentDistance() {
+    return _isAtRestartPosition ? "116 cm" : _currentDistance; // Mostrar distancia inicial en restart
+  }
+
+  // Métodos para el sistema dinámico de tiempo y distancia del bus azul
+  void _updateBlueBusInfo() {
+    setState(() {
+      _blueCurrentDistance = _blueBusDistances[blueCurrentRouteIndex];
+      
+      if (_blueRestartPositions.contains(blueCurrentRouteIndex)) {
+        // En posición de restart, reiniciar temporizador con tiempo específico del segmento
+        _blueIsAtRestartPosition = true;
+        _blueCurrentTimeSeconds = _blueSegmentTimes[blueCurrentRouteIndex] ?? 220; // Usar tiempo específico o default
+        _startBlueTimeCountdown();
+      }
+    });
+  }
+  
+  void _startBlueTimeCountdown() {
+    _blueTimeUpdateTimer?.cancel();
+    
+    if (_blueIsAtRestartPosition) {
+      // Esperar un momento antes de empezar el countdown
+      Timer(const Duration(milliseconds: 100), () {
+        _blueIsAtRestartPosition = false;
+        _startBlueRegularCountdown();
+      });
+    } else {
+      _startBlueRegularCountdown();
+    }
+  }
+  
+  void _startBlueRegularCountdown() {
+    _blueTimeUpdateTimer = Timer.periodic(const Duration(milliseconds: 200), (timer) {
+      if (mounted && isAnimationRunning && !blueIsAtStation) {
+        // Verificar si el segmento actual debe pausar el tiempo
+        bool shouldPauseTime = _bluePausedSegments.contains(blueCurrentRouteIndex);
+        
+        if (!shouldPauseTime) {
+          setState(() {
+            if (_blueCurrentTimeSeconds > 0) {
+              _blueCurrentTimeSeconds -= 3; // Decrementar 3 segundos cada 200ms para el bus azul
+              if (_blueCurrentTimeSeconds < 0) {
+                _blueCurrentTimeSeconds = 0; // No permitir valores negativos
+              }
+            }
+          });
+        }
+        // Si shouldPauseTime es true, el tiempo se mantiene igual (no decrementa)
+      }
+    });
+  }
+  
+  String _formatBlueTime(int seconds) {
+    if (_blueIsAtRestartPosition) {
+      // Mostrar el tiempo inicial según la posición actual
+      int initialSeconds = _blueSegmentTimes[blueCurrentRouteIndex] ?? 220;
+      int minutes = initialSeconds ~/ 60;
+      int remainingSeconds = initialSeconds % 60;
+      return "$minutes:${remainingSeconds.toString().padLeft(2, '0')}";
+    }
+    int minutes = seconds ~/ 60;
+    int remainingSeconds = seconds % 60;
+    return "$minutes:${remainingSeconds.toString().padLeft(2, '0')}";
+  }
+  
+  String _getBlueCurrentDistance() {
+    return _blueIsAtRestartPosition ? "195 cm" : _blueCurrentDistance; // Mostrar distancia inicial en restart
+  }
+
   // Método para alternar el estado de la animación
   void _toggleAnimation() {
     setState(() {
@@ -248,6 +428,8 @@ class _InteractiveMapState extends State<InteractiveMap> with TickerProviderStat
         // Iniciar ambas animaciones desde donde se quedaron
         _resumeMovement();
         _resumeBlueMovement();
+        _startTimeCountdown();
+        _startBlueTimeCountdown();
       } else {
         // Guardar el progreso actual antes de detener
         savedAnimationProgress = _animationController.value;
@@ -260,6 +442,8 @@ class _InteractiveMapState extends State<InteractiveMap> with TickerProviderStat
         // Cancelar timers de estación si están activos
         _stationTimer?.cancel();
         _blueStationTimer?.cancel();
+        _timeUpdateTimer?.cancel();
+        _blueTimeUpdateTimer?.cancel();
         
         // Resetear estados de estación
         isAtStation = false;
@@ -274,6 +458,8 @@ class _InteractiveMapState extends State<InteractiveMap> with TickerProviderStat
     _stationTimer?.cancel();
     _blueAnimationController.dispose();
     _blueStationTimer?.cancel();
+    _timeUpdateTimer?.cancel();
+    _blueTimeUpdateTimer?.cancel();
     super.dispose();
   }
 
@@ -288,17 +474,41 @@ class _InteractiveMapState extends State<InteractiveMap> with TickerProviderStat
           width: double.infinity,
           height: double.infinity,
           child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Center(
-              child: Container(
-                width: 350,
-                height: 600,
-                decoration: BoxDecoration(
-                  border: Border.all(color: Colors.black, width: 3),
-                  color: Colors.grey[100],
+            padding: const EdgeInsets.fromLTRB(16.0, 32.0, 16.0, 16.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.start,
+              children: [
+                // Indicadores de buses fuera del mapa
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 16.0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      _buildBusIndicator(
+                        busName: "Transmetro",
+                        busColor: Colors.green,
+                        timeRemaining: _formatTime(_currentTimeSeconds),
+                        distance: _getCurrentDistance(),
+                      ),
+                      _buildBusIndicator(
+                        busName: "Transurbano",
+                        busColor: Colors.blue,
+                        timeRemaining: _formatBlueTime(_blueCurrentTimeSeconds),
+                        distance: _getBlueCurrentDistance(),
+                      ),
+                    ],
+                  ),
                 ),
-                child: Stack(
-                  children: [
+                // Contenedor del mapa
+                Container(
+                  width: 350,
+                  height: 600,
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.black, width: 3),
+                    color: Colors.grey[100],
+                  ),
+                  child: Stack(
+                    children: [
                     // Fila superior de cuadras
                     Positioned(
                       top: 40,
@@ -390,7 +600,7 @@ class _InteractiveMapState extends State<InteractiveMap> with TickerProviderStat
                     ),
                   ],
                 ),
-              ),
+            )],
             ),
           ),
         ),
@@ -513,6 +723,116 @@ class _InteractiveMapState extends State<InteractiveMap> with TickerProviderStat
                 color: Colors.black,
                 shape: BoxShape.circle,
               ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBusIndicator({
+    required String busName,
+    required Color busColor,
+    required String timeRemaining,
+    required String distance,
+  }) {
+    return Container(
+      width: 120,
+      padding: EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: busColor, width: 2),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black26,
+            blurRadius: 4,
+            offset: Offset(2, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Encabezado con nombre y color del bus
+          Row(
+            children: [
+              Container(
+                width: 12,
+                height: 12,
+                decoration: BoxDecoration(
+                  color: busColor,
+                  shape: BoxShape.circle,
+                ),
+              ),
+              SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  busName,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: busColor,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 8),
+          
+          // Tiempo restante
+          Row(
+            children: [
+              Icon(
+                Icons.access_time,
+                size: 14,
+                color: Colors.grey[600],
+              ),
+              SizedBox(width: 4),
+              Text(
+                "Tiempo:",
+                style: TextStyle(
+                  fontSize: 10,
+                  color: Colors.grey[600],
+                ),
+              ),
+            ],
+          ),
+          Text(
+            timeRemaining,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+            ),
+          ),
+          SizedBox(height: 6),
+          
+          // Distancia
+          Row(
+            children: [
+              Icon(
+                Icons.straighten,
+                size: 14,
+                color: Colors.grey[600],
+              ),
+              SizedBox(width: 4),
+              Text(
+                "Distancia:",
+                style: TextStyle(
+                  fontSize: 10,
+                  color: Colors.grey[600],
+                ),
+              ),
+            ],
+          ),
+          Text(
+            distance,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
             ),
           ),
         ],
