@@ -13,181 +13,222 @@ class FeedPage extends StatefulWidget {
 }
 
 class _FeedPageState extends State<FeedPage> {
-  Map<String, dynamic> data = {'alertas': [], 'trafico': [], 'ambiente': []};
+  Map<String, dynamic> data = {'alertas': []};
   bool isLoading = true;
   String? error;
   late final baseUrl;
-  late final alertasTimer;
-  late final traficoAmbienteTimer;
+  late final realtimeTimer;
+  DateTime? _lastUpdate;
+  bool _isUpdating = false;
 
   @override
   void initState() {
     super.initState();
     baseUrl = 'https://fastapi-api-1nhl.onrender.com';
-    fetchAllData();
-    // Actualiza alertas cada 20 segundos
-    alertasTimer = Stream.periodic(const Duration(seconds: 20)).listen((_) {
-      fetchAlertas();
-    });
-    // Actualiza tráfico y ambiente cada segundo
-    traficoAmbienteTimer = Stream.periodic(const Duration(seconds: 1)).listen((_) {
-      fetchTraficoAmbiente();
+    
+    // Carga inicial de datos en tiempo real
+    fetchRealtimeData();
+    
+    // Actualiza todos los datos cada segundo
+    realtimeTimer = Stream.periodic(const Duration(seconds: 1)).listen((_) {
+      fetchRealtimeData();
     });
   }
 
   @override
   void dispose() {
-    alertasTimer.cancel();
-    traficoAmbienteTimer.cancel();
+    realtimeTimer.cancel();
     super.dispose();
   }
 
-  Future<void> fetchAllData() async {
-    setState(() {
-      isLoading = true;
-      error = null;
-    });
+  Future<void> fetchRealtimeData() async {
+    if (!_isUpdating) {
+      setState(() {
+        _isUpdating = true;
+      });
+    }
+
     try {
-  final alertasRes = await http.get(Uri.parse('$baseUrl/alertas/60'));
-      final traficoRes = await http.get(Uri.parse('$baseUrl/trafico'));
-      final ambienteRes = await http.get(Uri.parse('$baseUrl/ambiente'));
+      final alertasRes = await http.get(Uri.parse('$baseUrl/alertas/9'));
       final newAlertas = jsonDecode(alertasRes.body);
-      final newTrafico = jsonDecode(traficoRes.body);
-      final newAmbiente = jsonDecode(ambienteRes.body);
 
       setState(() {
         data = {
           'alertas': newAlertas,
-          'trafico': newTrafico,
-          'ambiente': newAmbiente,
         };
         isLoading = false;
+        error = null;
+        _lastUpdate = DateTime.now();
+        _isUpdating = false;
       });
     } catch (e) {
       setState(() {
         error = e.toString();
         isLoading = false;
+        _isUpdating = false;
       });
     }
   }
 
-  Future<void> fetchAlertas() async {
-    try {
-  final alertasRes = await http.get(Uri.parse('$baseUrl/alertas/60'));
-      final newAlertas = jsonDecode(alertasRes.body);
-      bool hasNew = false;
-      if ((newAlertas is List && newAlertas.isNotEmpty) && (data['alertas'] is List && data['alertas'].isNotEmpty)) {
-        if (newAlertas[0]['id'] != data['alertas'][0]['id']) hasNew = true;
-      } else if (newAlertas.isNotEmpty) {
-        hasNew = true;
-      }
-      if (hasNew) {
-        setState(() {
-          data['alertas'] = newAlertas;
-        });
-      }
-    } catch (_) {}
-  }
-
-  Future<void> fetchTraficoAmbiente() async {
-    try {
-      final traficoRes = await http.get(Uri.parse('$baseUrl/trafico'));
-      final ambienteRes = await http.get(Uri.parse('$baseUrl/ambiente'));
-      final newTrafico = jsonDecode(traficoRes.body);
-      final newAmbiente = jsonDecode(ambienteRes.body);
-      bool traficoNew = false;
-      bool ambienteNew = false;
-      if ((newTrafico is List && newTrafico.isNotEmpty) && (data['trafico'] is List && data['trafico'].isNotEmpty)) {
-        if (newTrafico[0]['timestamp'] != data['trafico'][0]['timestamp']) traficoNew = true;
-      } else if (newTrafico.isNotEmpty) {
-        traficoNew = true;
-      }
-      if ((newAmbiente is List && newAmbiente.isNotEmpty) && (data['ambiente'] is List && data['ambiente'].isNotEmpty)) {
-        if (newAmbiente[0]['timestamp'] != data['ambiente'][0]['timestamp']) ambienteNew = true;
-      } else if (newAmbiente.isNotEmpty) {
-        ambienteNew = true;
-      }
-      if (traficoNew || ambienteNew) {
-        setState(() {
-          if (traficoNew) data['trafico'] = newTrafico;
-          if (ambienteNew) data['ambiente'] = newAmbiente;
-        });
-      }
-    } catch (_) {}
+  String _formatTimestamp(DateTime dateTime) {
+    return "${dateTime.day.toString().padLeft(2, '0')}/${dateTime.month.toString().padLeft(2, '0')}/${dateTime.year} "
+           "${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}:${dateTime.second.toString().padLeft(2, '0')}";
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text("Notificaciones por alertas")),
+      appBar: AppBar(title: Text("Alertas en Tiempo Real")),
       drawer: HomeDrawer(),
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
           : error != null
               ? Center(child: Text('Error: $error'))
-              : ListView(
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text('Alertas recientes', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-                              ElevatedButton.icon(
-                                onPressed: () {
-                                  setState(() {
-                                    data['alertas'] = [];
-                                  });
-                                },
-                                icon: Icon(Icons.delete_forever),
-                                label: Text('Limpiar'),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color.fromARGB(161, 7, 105, 25),
-                                  foregroundColor: Colors.white,
-                                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                  textStyle: TextStyle(fontWeight: FontWeight.bold),
+              : SingleChildScrollView(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Header con indicadores de actualización
+                        Card(
+                          elevation: 2,
+                          child: Padding(
+                            padding: const EdgeInsets.all(16.0),
+                                                          child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('Alertas en Tiempo Real', 
+                                     style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+                                const SizedBox(height: 12),
+                                // Indicador de actualización como en tu imagen
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Text(
+                                          _lastUpdate != null 
+                                            ? 'Actualizado: ${_formatTimestamp(_lastUpdate!)}'
+                                            : 'Conectando...',
+                                          style: TextStyle(
+                                            color: Colors.grey[600],
+                                            fontSize: 13,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        if (_isUpdating)
+                                          SizedBox(
+                                            width: 16,
+                                            height: 16,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                              valueColor: AlwaysStoppedAnimation<Color>(Colors.green),
+                                            ),
+                                          )
+                                        else
+                                          Container(
+                                            width: 8,
+                                            height: 8,
+                                            decoration: BoxDecoration(
+                                              color: Colors.green,
+                                              shape: BoxShape.circle,
+                                            ),
+                                          ),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          _isUpdating ? 'LIVE' : 'ACTUALIZADO',
+                                          style: TextStyle(
+                                            color: Colors.green,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 8,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    
+                                  ],
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
-                          const SizedBox(height: 8),
-                          Row(
+                        ),
+                        
+                        const SizedBox(height: 16),
+                        
+                        // Filtros
+                        if ((data['alertas'] as List<dynamic>? ?? []).isNotEmpty)
+                          Card(
+                          child: Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('Filtrar por tipo:', style: TextStyle(fontWeight: FontWeight.bold)),
-                              const SizedBox(width: 8),
-                              DropdownButton<String>(
+                              Row(
+                              children: [
+                                Text('Filtrar por tipo:', style: TextStyle(fontWeight: FontWeight.bold)),
+                                const SizedBox(width: 8),
+                                DropdownButton<String>(
                                 value: selectedTipo,
                                 hint: Text('Selecciona tipo'),
                                 items: [
                                   ...((data['alertas'] as List<dynamic>? ?? [])
-                                    .map((a) => a['tipo']?.toString() ?? '')
-                                    .toSet()
-                                    .map((tipo) => DropdownMenuItem<String>(
-                                          value: tipo,
-                                          child: Text(tipo.toUpperCase()),
-                                        )))
+                                  .map((a) => a['tipo']?.toString() ?? '')
+                                  .toSet()
+                                  .map((tipo) => DropdownMenuItem<String>(
+                                      value: tipo,
+                                      child: Text(tipo.toUpperCase()),
+                                    )))
                                 ],
                                 onChanged: (value) {
                                   setState(() {
-                                    selectedTipo = value;
+                                  selectedTipo = value;
                                   });
                                 },
+                                ),
+                              ],
                               ),
                               if (selectedTipo != null)
-                                TextButton(
-                                  onPressed: () {
-                                    setState(() {
-                                      selectedTipo = null;
-                                    });
-                                  },
-                                  child: Text('Limpiar filtro'),
+                              Padding(
+                                padding: const EdgeInsets.only(top: 8.0),
+                                child: TextButton(
+                                onPressed: () {
+                                  setState(() {
+                                  selectedTipo = null;
+                                  });
+                                },
+                                child: Text('Limpiar filtro'),
                                 ),
+                              ),
                             ],
+                            ),
                           ),
-                          const SizedBox(height: 8),
+                          ),
+                        
+                        const SizedBox(height: 16),
+                        
+                        // Lista de alertas
+                        if ((data['alertas'] as List<dynamic>? ?? []).isEmpty)
+                          Card(
+                            color: Colors.grey[100],
+                            child: Padding(
+                              padding: const EdgeInsets.all(32.0),
+                              child: Center(
+                                child: Column(
+                                  children: [
+                                    Icon(Icons.notifications_none, 
+                                         size: 48, color: Colors.grey[400]),
+                                    const SizedBox(height: 8),
+                                    Text('No hay alertas en este momento',
+                                         style: TextStyle(color: Colors.grey[600], fontSize: 16)),
+                                    Text('Actualizando cada segundo...',
+                                         style: TextStyle(color: Colors.grey[500], fontSize: 12)),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          )
+                        else
                           ...((data['alertas'] as List<dynamic>? ?? [])
                               .where((a) => selectedTipo == null || a['tipo'] == selectedTipo)
                               .map((a) {
@@ -195,132 +236,72 @@ class _FeedPageState extends State<FeedPage> {
                                 Color iconColor;
                                 Color textColor = Colors.black;
                                 Color subtitleColor = Colors.grey[700]!;
+                                IconData alertIcon;
+                                
                                 switch (a['tipo']?.toString().toUpperCase()) {
                                   case 'SISMO':
                                     cardColor = const Color.fromARGB(240, 187, 82, 98);
                                     iconColor = Colors.red;
                                     textColor = Colors.white;
-                                    subtitleColor = Colors.white;
+                                    subtitleColor = Colors.white70;
+                                    alertIcon = Icons.vibration;
                                     break;
                                   case 'PANICO':
                                     cardColor = Colors.yellow[100]!;
                                     iconColor = Colors.orange;
+                                    alertIcon = Icons.warning;
                                     break;
                                   case 'INCENDIO':
                                     cardColor = Colors.orange[100]!;
                                     iconColor = Colors.deepOrange;
+                                    alertIcon = Icons.local_fire_department;
                                     break;
                                   case 'INFRACCION':
                                     cardColor = Colors.blue[100]!;
                                     iconColor = Colors.blue;
+                                    alertIcon = Icons.gavel;
                                     break;
                                   default:
                                     cardColor = const Color.fromARGB(255, 124, 152, 174);
                                     iconColor = const Color.fromARGB(255, 1, 33, 94);
+                                    alertIcon = Icons.notification_important;
                                 }
+                                
                                 return Card(
                                   elevation: 4,
                                   margin: const EdgeInsets.symmetric(vertical: 6),
                                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                                   color: cardColor,
                                   child: ListTile(
-                                    leading: Icon(Icons.warning, color: iconColor, size: 32),
+                                    leading: Container(
+                                      padding: const EdgeInsets.all(8),
+                                      decoration: BoxDecoration(
+                                        color: iconColor.withOpacity(0.2),
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: Icon(alertIcon, color: iconColor, size: 24),
+                                    ),
                                     title: Text(
-                                      '${a['tipo']?.toUpperCase() ?? 'Alerta'}',
-                                      style: TextStyle(fontWeight: FontWeight.bold, color: textColor),
+                                      '${a['tipo']?.toUpperCase() ?? 'ALERTA'}',
+                                      style: TextStyle(fontWeight: FontWeight.bold, color: textColor, fontSize: 16),
                                     ),
                                     subtitle: Column(
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
-                                        Text('Nivel o zona: ${a['data']}', style: TextStyle(fontSize: 16, color: textColor)),
-                                        Text('Fecha: ${a['timestamp']}', style: TextStyle(fontSize: 14, color: subtitleColor)),
+                                        const SizedBox(height: 4),
+                                        Text('Nivel o zona: ${a['data'] ?? 'N/A'}', 
+                                             style: TextStyle(fontSize: 14, color: textColor)),
+                                        Text('Fecha: ${a['timestamp'] ?? 'N/A'}', 
+                                             style: TextStyle(fontSize: 12, color: subtitleColor)),
                                       ],
                                     ),
+                                    trailing: Icon(Icons.chevron_right, color: iconColor),
                                   ),
                                 );
                               })),
-                        ],
-                      ),
+                      ],
                     ),
-                    Divider(),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-                      child: Text('Tráfico', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-                    ),
-                    ...((data['trafico'] as List<dynamic>? ?? []).map((t) {
-                      final semaforos = t['semaforos'] as List? ?? [];
-                      return Column(
-                        children: semaforos.map<Widget>((s) {
-                          Color cardColor;
-                          String colorStr = (s is Map && s.containsKey('color')) ? s['color'].toString().toLowerCase() : s.toString().toLowerCase();
-                          switch (colorStr) {
-                            case 'rojo':
-                              cardColor = Colors.red[300]!;
-                              break;
-                            case 'amarillo':
-                              cardColor = Colors.yellow[300]!;
-                              break;
-                            case 'verde':
-                              cardColor = Colors.green[300]!;
-                              break;
-                            default:
-                              cardColor = Colors.grey[300]!;
-                          }
-                          String colorDisplay = colorStr.isNotEmpty ? colorStr[0].toUpperCase() + colorStr.substring(1) : 'Desconocido';
-                          return Card(
-                            color: cardColor,
-                            elevation: 3,
-                            margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 16),
-                            child: ListTile(
-                              leading: Icon(Icons.traffic, color: Colors.black),
-                              title: Text('Color: $colorDisplay', style: TextStyle(fontWeight: FontWeight.bold)),
-                              trailing: Text('Fecha: ${t['timestamp']}', style: TextStyle(fontSize: 12)),
-                            ),
-                          );
-                        }).toList(),
-                      );
-                    })),
-                    Divider(),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-                      child: Text('Ambiente', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-                    ),
-                    ...((data['ambiente'] as List<dynamic>? ?? []).map((am) {
-                      final sensores = am['mq_sensors'] as List? ?? [];
-                      return Column(
-                        children: sensores.map<Widget>((s) {
-                          Color cardColor;
-                          String colorStr = (s is Map && s.containsKey('color')) ? s['color'].toString().toLowerCase() : '';
-                          switch (colorStr) {
-                            case 'rojo':
-                              cardColor = Colors.red[200]!;
-                              break;
-                            case 'amarillo':
-                              cardColor = Colors.yellow[200]!;
-                              break;
-                            case 'verde':
-                              cardColor = Colors.green[200]!;
-                              break;
-                            default:
-                              cardColor = Colors.grey[200]!;
-                          }
-                          String nivel = s is Map && s.containsKey('nivel') ? s['nivel'].toString() : 'Desconocido';
-                          String id = s is Map && s.containsKey('id') ? s['id'].toString() : 'Desconocido';
-                          return Card(
-                            color: cardColor,
-                            elevation: 3,
-                            margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 16),
-                            child: ListTile(
-                              leading: Icon(Icons.sensors, color: Colors.black),
-                              title: Text('Sensor\nID: $id', style: TextStyle(fontWeight: FontWeight.bold)),
-                              subtitle: Text('Nivel: $nivel'),
-                              trailing: Text('Fecha: ${am['timestamp']}', style: TextStyle(fontSize: 12)),
-                            ),
-                          );
-                        }).toList(),
-                      );
-                    })),
-                  ],
+                  ),
                 ),
     );
   }
