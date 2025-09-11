@@ -91,6 +91,9 @@ class _InteractiveMapState extends State<InteractiveMap> with TickerProviderStat
   // Segmentos donde el tiempo debe pausarse (no decrementar)
   final Set<int> _bluePausedSegments = {8}; // Posición 8 a 0 no transcurre tiempo
   
+  // Variable para alternar entre decrementos de 2 y 3 para el bus azul
+  bool _blueTimerToggle = true; // true = resta 2, false = resta 3
+  
   // Distancias por posición para el bus verde
   final List<String> _greenBusDistances = [
     "116 cm", // Posición 0 - Restart
@@ -129,7 +132,7 @@ class _InteractiveMapState extends State<InteractiveMap> with TickerProviderStat
     
     // Configuración para el bus verde
     _animationController = AnimationController(
-      duration: const Duration(milliseconds: 2200), // Ajustado para completar ciclo en ~10s (8 segmentos)
+      duration: const Duration(milliseconds: 4600), // Ajustado para completar ciclo en ~10s (8 segmentos)
       vsync: this,
     );
     
@@ -170,7 +173,7 @@ class _InteractiveMapState extends State<InteractiveMap> with TickerProviderStat
 
     // Configuración para el bus azul
     _blueAnimationController = AnimationController(
-      duration: const Duration(milliseconds: 2200), // Mismo timing que el bus verde
+      duration: const Duration(milliseconds: 4600), // Mismo timing que el bus verde
       vsync: this,
     );
     
@@ -332,7 +335,7 @@ class _InteractiveMapState extends State<InteractiveMap> with TickerProviderStat
       if (mounted && isAnimationRunning && !isAtStation) {
         setState(() {
           if (_currentTimeSeconds > 0) {
-            _currentTimeSeconds -= 15; // Decrementar 15 segundos cada 200ms para simular rapidez
+            _currentTimeSeconds -= 7; // Decrementar 15 segundos cada 200ms para simular rapidez
             if (_currentTimeSeconds < 0) {
               _currentTimeSeconds = 0; // No permitir valores negativos
             }
@@ -390,7 +393,11 @@ class _InteractiveMapState extends State<InteractiveMap> with TickerProviderStat
         if (!shouldPauseTime) {
           setState(() {
             if (_blueCurrentTimeSeconds > 0) {
-              _blueCurrentTimeSeconds -= 3; // Decrementar 3 segundos cada 200ms para el bus azul
+              // Alternar entre restar 2 y 3 segundos para lograr promedio de 2.5
+              int decrementAmount = _blueTimerToggle ? 0 : 3;
+              _blueCurrentTimeSeconds -= decrementAmount;
+              _blueTimerToggle = !_blueTimerToggle; // Alternar el valor
+              
               if (_blueCurrentTimeSeconds < 0) {
                 _blueCurrentTimeSeconds = 0; // No permitir valores negativos
               }
@@ -470,14 +477,14 @@ class _InteractiveMapState extends State<InteractiveMap> with TickerProviderStat
       drawer: HomeDrawer(),
       body: GestureDetector(
         onTap: _toggleAnimation,
-        child: Container(
-          width: double.infinity,
-          height: double.infinity,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16.0, 32.0, 16.0, 16.0),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.start,
-              children: [
+        child: SingleChildScrollView(
+          child: Container(
+            width: double.infinity,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16.0, 32.0, 16.0, 16.0),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.start,
+                children: [
                 // Indicadores de buses fuera del mapa
                 Padding(
                   padding: const EdgeInsets.only(bottom: 16.0),
@@ -600,11 +607,13 @@ class _InteractiveMapState extends State<InteractiveMap> with TickerProviderStat
                     ),
                   ],
                 ),
-            )],
-            ),
+              ),
+            ],
           ),
         ),
       ),
+    )
+    )
     );
   }
 
@@ -737,7 +746,7 @@ class _InteractiveMapState extends State<InteractiveMap> with TickerProviderStat
     required String distance,
   }) {
     return Container(
-      width: 120,
+      width: 150,
       padding: EdgeInsets.all(8),
       decoration: BoxDecoration(
         color: Colors.white,
