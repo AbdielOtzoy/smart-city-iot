@@ -6,6 +6,25 @@ import '../widgets/home_drawer.dart';
 import '../../../home/data/api_client.dart';
 import '../../data/structs.dart';
 
+// para manejar el umbral en los mqSensors
+const Map<int, Map<String, double>> kSensorAbsoluteOverrides = {
+  0: {
+    'greenUpTo': 200,
+    'amberUpTo': 250,
+    'redAbove': 300,
+  },
+  1: {
+    'greenUpTo': 200,
+    'amberUpTo': 250,
+    'redAbove': 300,
+  },
+  2: {
+    'greenUpTo': 10,
+    'amberUpTo': 15,
+    'redAbove': 19, 
+  },
+};
+
 class ControlPanel extends StatelessWidget {
   const ControlPanel({super.key});
 
@@ -22,6 +41,8 @@ class ControlPanel extends StatelessWidget {
           AmbientSection(),
           SizedBox(height: 12),
           AlertsSection(),
+          SizedBox(height: 12),
+          AlertsByTypeSection(),
         ],
       ),
     );
@@ -81,7 +102,7 @@ class _TrafficSectionState extends State<TrafficSection> {
   void initState() {
     super.initState();
     _load();
-    _timer = Timer.periodic(const Duration(seconds: 2), (_) {
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted && !_loading) _load();
     });
   }
@@ -305,14 +326,14 @@ class _AmbientSectionState extends State<AmbientSection> {
 
   // el mqMax conforme umbral jeje
   static const double mqMin = 0;
-  static const double mqMax = 1023;
+  static const double mqMax = 600;
   static const String mqUnits = 'ppm';
 
   @override
   void initState() {
     super.initState();
     _load();
-    _timer = Timer.periodic(const Duration(seconds: 5), (_) {
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted && !_loading) _load();
     });
   }
@@ -369,6 +390,7 @@ class _AmbientSectionState extends State<AmbientSection> {
                   if (i > 0) const SizedBox(width: 12),
                   Expanded(
                     child: SemicircleGauge(
+                      sensorId: (three[i]['id'] ?? (i + 1)).toInt(),
                       label: 'MQ${(three[i]['id'] ?? (i + 1)).toInt()}',
                       value: three[i].containsKey('nivel') ? (three[i]['nivel'] as num).toDouble() : null,
                       min: mqMin,
@@ -438,6 +460,7 @@ class _AmbientSectionState extends State<AmbientSection> {
 
 // ratio 0..1
 class SemicircleGauge extends StatelessWidget {
+  final int? sensorId;
   final String label;
   final double? value;
   final double min;
@@ -447,6 +470,7 @@ class SemicircleGauge extends StatelessWidget {
 
   const SemicircleGauge({
     super.key,
+    this.sensorId,
     required this.label,
     required this.value,
     this.min = 0,
@@ -455,7 +479,19 @@ class SemicircleGauge extends StatelessWidget {
     this.strokeWidth = 14,
   });
 
-  Color _colorFor(double ratio) {
+  Color _colorFor(double ratio, double currentValue) {
+    // para que exista la opción de que sea porcetaje o por un valor fijo
+    if (sensorId != null && kSensorAbsoluteOverrides.containsKey(sensorId)) {
+      final ov = kSensorAbsoluteOverrides[sensorId]!;
+      final greenUpTo = ov['greenUpTo'] ?? currentValue;
+      final amberUpTo = ov['amberUpTo'] ?? currentValue;
+      final redAbove  = ov['redAbove']  ?? currentValue;
+      if (currentValue <= greenUpTo) return Colors.green;
+      if (currentValue <= amberUpTo) return Colors.amber;
+      if (currentValue > redAbove) return Colors.red;
+      return Colors.amber;
+    }
+    // aquí se manejan los porcentajes
     if (ratio <= 1 / 3) return Colors.green;
     if (ratio <= 2 / 3) return Colors.amber;
     return Colors.red;
@@ -465,7 +501,7 @@ class SemicircleGauge extends StatelessWidget {
   Widget build(BuildContext context) {
     final hasValue = value != null && max > min;
     final ratio = hasValue ? ((value! - min) / (max - min)).clamp(0.0, 1.0) : 0.0;
-    final color = _colorFor(ratio);
+  final color = _colorFor(ratio, value ?? min);
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -559,6 +595,7 @@ class _AlertsSectionState extends State<AlertsSection> {
   DateTime? _lastUpdate;
   String _window = '24h';
   Timer? _timer;
+  static const int _alertsLimit = 60; // para que se use la petición /alertas/60
 
   @override
   void initState() {
@@ -575,7 +612,7 @@ class _AlertsSectionState extends State<AlertsSection> {
       _error = null;
     });
     try {
-      final res = await _api.fetchAlertas(limit: 300);
+  final res = await _api.fetchAlertas(limit: _alertsLimit);
       setState(() {
         _data = res;
         _loading = false;
@@ -782,4 +819,281 @@ class _AlertsSectionState extends State<AlertsSection> {
       ),
     );
   }
+}
+
+// FILTRADO POR TIPO DE DATOS
+class AlertsByTypeSection extends StatefulWidget {
+  const AlertsByTypeSection({super.key});
+
+  @override
+  State<AlertsByTypeSection> createState() => _AlertsByTypeSectionState();
+}
+
+class _AlertsByTypeSectionState extends State<AlertsByTypeSection> {
+  final _api = ApiClient();
+  List<Alerta> _data = const [];
+  bool _loading = true;
+  String? _error;
+  DateTime? _lastUpdate;
+  String _selected = 'todas';
+  Timer? _timer;
+  static const int _alertsLimit = 60; // lo histórico que se carga
+
+  static const List<String> _types = ['sismo', 'panico', 'incendio', 'infraccion'];
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+    _timer = Timer.periodic(const Duration(seconds: 20), (_) {
+      if (mounted && !_loading) _load();
+    });
+  }
+
+  Future<void> _load() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final res = await _api.fetchAlertas(limit: _alertsLimit);
+      setState(() {
+        _data = res;
+        _loading = false;
+        _lastUpdate = DateTime.now();
+      });
+    } catch (e) {
+      setState(() {
+        _error = e.toString();
+        _loading = false;
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final hasData = _data.isNotEmpty;
+    Widget content = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (_lastUpdate != null) Text('Actualizado: ${_lastUpdate!.toLocal()}'),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            const Text('Tipo:'),
+            const SizedBox(width: 8),
+            DropdownButton<String>(
+              value: _selected,
+              items: const [
+                DropdownMenuItem(value: 'todas', child: Text('Todas')),
+                DropdownMenuItem(value: 'sismo', child: Text('Sismo')),
+                DropdownMenuItem(value: 'panico', child: Text('Pánico')),
+                DropdownMenuItem(value: 'incendio', child: Text('Incendio')),
+                DropdownMenuItem(value: 'infraccion', child: Text('Infracción')),
+              ],
+              onChanged: (v) => setState(() => _selected = v ?? 'todas'),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          height: 220,
+          child: _selected == 'todas' ? _pieAll() : _barByTypeTotal(_selected),
+        ),
+      ],
+    );
+
+    return KpiCard(
+      title: 'Alertas por tipo',
+      child: hasData
+          ? Stack(
+              children: [
+                AnimatedOpacity(
+                  opacity: _loading ? 0.7 : 1.0,
+                  duration: const Duration(milliseconds: 250),
+                  child: content,
+                ),
+                if (_error != null)
+                  Positioned(
+                    top: 0,
+                    right: 0,
+                    child: Material(
+                      color: Colors.transparent,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.red.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.error_outline, color: Colors.red, size: 16),
+                            const SizedBox(width: 6),
+                            Text('Error', style: TextStyle(color: Colors.red.shade700)),
+                            const SizedBox(width: 8),
+                            TextButton(onPressed: _load, child: const Text('Reintentar')),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                if (_loading)
+                  Positioned(
+                    top: 0,
+                    right: 0,
+                    child: SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Theme.of(context).colorScheme.primary),
+                    ),
+                  ),
+              ],
+            )
+          : (_loading
+              ? const Center(child: CircularProgressIndicator())
+              : content),
+    );
+  }
+
+  Widget _pieAll() {
+    final counts = {
+      for (final t in _types) t: _data.where((a) => a.tipo.toLowerCase() == t).length.toDouble()
+    };
+    final colors = {
+      'sismo': Colors.red,
+      'panico': Colors.orange,
+      'incendio': Colors.deepOrange,
+      'infraccion': Colors.blue,
+    };
+    final sections = _types
+        .map((t) => PieChartSectionData(
+              value: counts[t]!,
+              color: colors[t]!,
+              title: counts[t]!.toInt().toString(),
+              radius: 60,
+              titleStyle: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
+            ))
+        .toList();
+
+    return Column(
+      children: [
+        Expanded(
+          child: PieChart(
+            PieChartData(
+              sections: sections,
+              centerSpaceRadius: 0,
+              sectionsSpace: 2,
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 4,
+          children: _types
+              .map((t) => Row(mainAxisSize: MainAxisSize.min, children: [
+                    Container(width: 10, height: 10, color: colors[t]),
+                    const SizedBox(width: 6),
+                    Text('${t[0].toUpperCase()}${t.substring(1)} (${counts[t]!.toInt()})'),
+                  ]))
+              .toList(),
+        ),
+      ],
+    );
+  }
+
+  // para que la grafica por cada tipo sea en una barra horizontal
+  Widget _barByTypeTotal(String type) {
+    final typeLc = type.toLowerCase();
+    final totalOfType = _data.where((a) => a.tipo.toLowerCase() == typeLc).length;
+    final maxCount = totalOfType == 0 ? 1 : totalOfType; 
+
+    final color = {
+      'sismo': Colors.red,
+      'panico': Colors.orange,
+      'incendio': Colors.deepOrange,
+      'infraccion': Colors.blue,
+    }[typeLc] ?? Colors.teal;
+
+    final tickFractions = const [0.0, 0.25, 0.5, 0.75, 1.0];
+    final tickLabels = tickFractions.map((f) => (maxCount * f).round()).toList();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Total ${typeLc[0].toUpperCase()}${typeLc.substring(1)}: $totalOfType'),
+        const SizedBox(height: 12),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final w = constraints.maxWidth;
+            final barHeight = 22.0;
+            final bg = Theme.of(context).dividerColor.withValues(alpha: 0.3);
+            return Column(
+              children: [
+                // pa que siempre esté la barra llena 
+                Stack(
+                  children: [
+                    Container(
+                      width: w,
+                      height: barHeight,
+                      decoration: BoxDecoration(
+                        color: bg,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    // total rellenado
+                    Container(
+                      width: w * (totalOfType / maxCount),
+                      height: barHeight,
+                      decoration: BoxDecoration(
+                        color: color,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: w,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      SizedBox(
+                        height: 10,
+                        child: Stack(
+                          children: List.generate(tickFractions.length, (i) {
+                            final left = (w - 1) * tickFractions[i];
+                            return Positioned(
+                              left: left,
+                              top: 0,
+                              child: Container(width: 1, height: 10, color: Colors.black26),
+                            );
+                          }),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: tickLabels
+                            .map((v) => Text('$v', style: const TextStyle(fontSize: 10, color: Colors.black54)))
+                            .toList(),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
+      ],
+    );
+  }
+
 }
