@@ -7,9 +7,12 @@ def on_connect(client, _, __, rc):
     if rc == 0:
         print("Conectado a MQTT Broker")
         # Tópicos a los que se suscribe
-        client.subscribe("GRUPO2/arqui2/alertas")
-        client.subscribe("GRUPO2/arqui2/trafico")
-        client.subscribe("GRUPO2/arqui2/ambiente")
+        client.subscribe("Data/Grupo2/ACE2/2S2025/Trafico")
+        client.subscribe("Data/Grupo2/ACE2/2S2025/Ambiente")
+        client.subscribe("Data/Grupo2/ACE2/2S2025/Incendio")
+        client.subscribe("Data/Grupo2/ACE2/2S2025/Sismo")
+        client.subscribe("Data/Grupo2/ACE2/2S2025/Panico")
+        client.subscribe("Data/Grupo2/ACE2/2S2025/Infraccion")
     else:
         print(f"Error: {rc}")
 
@@ -30,22 +33,65 @@ def on_message(_, __, msg):
                     "data": ubicacion,
                     "timestamp": timestamp
                 })
-        elif msg.topic == "GRUPO2/arqui2/trafico":
-            semaforos = data.get("semaforos", [])
-            for estado in semaforos:
-                print(f"Semáforo {estado}")
+        elif msg.topic == "Data/Grupo2/ACE2/2S2025/Incendio":
+            datos = data.get("data")
+            datos = datos if len(datos) <= 3 else datos[:3]
+            for dato in datos:
+                print(dato)
+                if dato['estado'] == "ALTO" or dato['estado'] == "ALERTA":
+                    print(f"Alerta de incendio en {dato['estado']} en {dato['id']}")
+                    alertasCollection.insert_one({
+                        "tipo": "incendio",
+                        "data": str(dato["id"]),
+                        "timestamp": timestamp
+                    })
+        elif msg.topic == "Data/Grupo2/ACE2/2S2025/Trafico":
+            semaforos = data.get("semaforos")
             traficoCollection.insert_one({
                 "semaforos": semaforos,
                 "timestamp": timestamp
             })
-        elif msg.topic == "GRUPO2/arqui2/ambiente":
-            mq1 = data.get("mq1")
-            mq2 = data.get("mq2")
-            mq3 = data.get("mq3")
+        elif msg.topic == "Data/Grupo2/ACE2/2S2025/Sismo":
+            nivel = data.get("nivel")
+            if nivel == "ALTO" or nivel == "ALERTA":
+                print(f"Alerta de sismo en {nivel}")
+                alertasCollection.insert_one({
+                    "tipo": "sismo",
+                    "data": nivel,
+                    "timestamp": timestamp
+                })
+        elif msg.topic == "Data/Grupo2/ACE2/2S2025/Panico":
+            datos = data.get("data")
+            if datos:
+                unique_datos = set()
+                for dato in datos:
+                    unique_datos.add(dato['zona'])
+                for zona in unique_datos:
+                    print(f"Alerta de pánico en {zona}")
+                    alertasCollection.insert_one({
+                        "tipo": "panico",
+                        "data": str(zona),
+                        "timestamp": timestamp
+                    })
+        elif msg.topic == "Data/Grupo2/ACE2/2S2025/Infraccion":
+            datos = data.get("data")
+            if datos:
+                unique_datos = set()
+                for dato in datos:
+                    unique_datos.add(dato['zona'])
+                for zona in unique_datos:
+                    print(f"Alerta de infracción en {zona}")
+                    alertasCollection.insert_one({
+                        "tipo": "infraccion",
+                        "data": str(zona),
+                        "timestamp": timestamp
+                    })
+        elif msg.topic == "Data/Grupo2/ACE2/2S2025/Ambiente":
+            # recolectar solamente los primeros 3 datos del arreglo
+            mq_sensors = data.get("mq_sensors", [])
+            mq_sensors = mq_sensors if len(mq_sensors) <= 3 else mq_sensors[:3]
             ambienteCollection.insert_one({
-                "mq1": mq1,
-                "mq2": mq2,
-                "mq3": mq3,
+                "mq_sensors": mq_sensors,
                 "timestamp": timestamp
             })
 
@@ -61,3 +107,4 @@ def start_mqtt():
     client.loop_start()
     print("Cliente MQTT iniciado")
     return client
+
