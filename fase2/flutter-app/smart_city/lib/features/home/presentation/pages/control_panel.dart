@@ -43,6 +43,8 @@ class ControlPanel extends StatelessWidget {
           AlertsSection(),
           SizedBox(height: 12),
           AlertsByTypeSection(),
+          SizedBox(height: 12),
+          AlertsPieCountSection(),
         ],
       ),
     );
@@ -1096,4 +1098,192 @@ class _AlertsByTypeSectionState extends State<AlertsByTypeSection> {
     );
   }
 
+}
+
+// grafica pero por cantidad
+class AlertsPieCountSection extends StatefulWidget {
+  const AlertsPieCountSection({super.key});
+
+  @override
+  State<AlertsPieCountSection> createState() => _AlertsPieCountSectionState();
+}
+
+class _AlertsPieCountSectionState extends State<AlertsPieCountSection> {
+  final _api = ApiClient();
+  List<Alerta> _data = const [];
+  bool _loading = true;
+  String? _error;
+  DateTime? _lastUpdate;
+  Timer? _timer;
+  String _selCount = 'todas';
+  static const int _alertsLimit = 60; // lo histórico que se carga
+  static const List<String> _types = ['sismo', 'panico', 'incendio', 'infraccion'];
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+    _timer = Timer.periodic(const Duration(seconds: 20), (_) {
+      if (mounted && !_loading) _load();
+    });
+  }
+
+  Future<void> _load() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final res = await _api.fetchAlertas(limit: _alertsLimit);
+      setState(() {
+        _data = res;
+        _loading = false;
+        _lastUpdate = DateTime.now();
+      });
+    } catch (e) {
+      setState(() {
+        _error = e.toString();
+        _loading = false;
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final hasData = _data.isNotEmpty;
+    Widget content = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (_lastUpdate != null) Text('Actualizado: ${_lastUpdate!.toLocal()}'),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            const Text('Cantidad:'),
+            const SizedBox(width: 8),
+            DropdownButton<String>(
+              value: _selCount,
+              items: const [
+                DropdownMenuItem(value: '10', child: Text('Últimos 10')),
+                DropdownMenuItem(value: '20', child: Text('Últimos 20')),
+                DropdownMenuItem(value: '40', child: Text('Últimos 40')),
+                DropdownMenuItem(value: '60', child: Text('Últimos 60')),
+                DropdownMenuItem(value: 'todas', child: Text('Todas')),
+              ],
+              onChanged: (v) => setState(() => _selCount = v ?? 'todas'),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        SizedBox(height: 220, child: _pieForSelection()),
+      ],
+    );
+
+    return KpiCard(
+      title: 'Alertas por cantidad',
+      child: hasData
+          ? Stack(
+              children: [
+                AnimatedOpacity(
+                  opacity: _loading ? 0.7 : 1.0,
+                  duration: const Duration(milliseconds: 250),
+                  child: content,
+                ),
+                if (_error != null)
+                  Positioned(
+                    top: 0,
+                    right: 0,
+                    child: Material(
+                      color: Colors.transparent,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.red.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.error_outline, color: Colors.red, size: 16),
+                            const SizedBox(width: 6),
+                            Text('Error', style: TextStyle(color: Colors.red.shade700)),
+                            const SizedBox(width: 8),
+                            TextButton(onPressed: _load, child: const Text('Reintentar')),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                if (_loading)
+                  Positioned(
+                    top: 0,
+                    right: 0,
+                    child: SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Theme.of(context).colorScheme.primary),
+                    ),
+                  ),
+              ],
+            )
+          : (_loading
+              ? const Center(child: CircularProgressIndicator())
+              : content),
+    );
+  }
+
+  Widget _pieForSelection() {
+    final int? n = _selCount == 'todas' ? null : int.tryParse(_selCount);
+    final slice = (n == null || n >= _data.length) ? _data : _data.take(n).toList();
+    final counts = {
+      for (final t in _types) t: slice.where((a) => a.tipo.toLowerCase() == t).length.toDouble()
+    };
+    final colors = {
+      'sismo': Colors.red,
+      'panico': Colors.orange,
+      'incendio': Colors.deepOrange,
+      'infraccion': Colors.blue,
+    };
+
+    final sections = _types
+        .map((t) => PieChartSectionData(
+              value: counts[t]!,
+              color: colors[t]!,
+              title: counts[t]!.toInt().toString(),
+              radius: 60,
+              titleStyle: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
+            ))
+        .toList();
+
+    return Column(
+      children: [
+        Expanded(
+          child: PieChart(
+            PieChartData(
+              sections: sections,
+              centerSpaceRadius: 0,
+              sectionsSpace: 2,
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 4,
+          children: _types
+              .map((t) => Row(mainAxisSize: MainAxisSize.min, children: [
+                    Container(width: 10, height: 10, color: colors[t]),
+                    const SizedBox(width: 6),
+                    Text('${t[0].toUpperCase()}${t.substring(1)} (${counts[t]!.toInt()})'),
+                  ]))
+              .toList(),
+        ),
+      ],
+    );
+  }
 }
