@@ -3,159 +3,223 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Centro Histórico - Zona 1</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: Arial, sans-serif;
-            line-height: 1.6;
-        }
-
-        nav {
-            background: #6a1b9a;
-            color: white;
-            padding: 1rem;
-            position: fixed;
-            width: 100%;
-            top: 0;
-            z-index: 100;
-        }
-
-        nav ul {
-            list-style: none;
-            display: flex;
-            gap: 2rem;
-        }
-
-        nav a {
-            color: white;
-            text-decoration: none;
-        }
-
-        main {
-            margin-top: 60px;
-            padding: 2rem;
-        }
-
-        section {
-            min-height: 100vh;
-            padding: 2rem;
-        }
-
-        h1 {
-            color: #6a1b9a;
-            margin-bottom: 1rem;
-        }
-
-        h2 {
-            color: #8e24aa;
-            margin-top: 2rem;
-            margin-bottom: 1rem;
-        }
-
-        img {
-            max-width: 100%;
-            height: auto;
-            border-radius: 10px;
-            margin: 1rem 0;
-        }
-
-        footer {
-            background: #6a1b9a;
-            color: white;
-            text-align: center;
-            padding: 2rem;
-        }
-    </style>
+    <title>Centro Histórico - Zona 1 Guatemala</title>
+    <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
+    <nav id="navbar">
+        <div class="logo">Centro Histórico</div>
+        <ul class="nav-links">
+            <li><a href="#inicio" class="nav-link">Inicio</a></li>
+            <li><a href="#palacio" class="nav-link">Palacio Nacional</a></li>
+            <li><a href="#biblioteca" class="nav-link">Biblioteca</a></li>
+            <li><a href="#mercado" class="nav-link">Mercado Central</a></li>
+        </ul>
+        <button class="menu-toggle" id="menuToggle">☰</button>
+    </nav>
 
-    <main>
-
-        <section id="inicio">
-            <h1>Centro Histórico - Zona 1 Guatemala</h1>
-            <p>Explora la historia y cultura del corazón de Guatemala</p>
+    <main id="mainContent">
+        <section class="view active" id="inicio">
+            <div class="hero">
+                <h1 class="fade-in">Descubre la Zona 1</h1>
+                <p class="fade-in-delay">Explora la historia y cultura del corazón de Guatemala</p>
+                <div class="hero-buttons fade-in-delay-2">
+                    <button class="btn btn-primary" onclick="navigateTo('palacio')">Comenzar Tour</button>
+                    <button class="btn btn-secondary" onclick="showQRInfo()">Escanea el QR</button>
+                </div>
+                
+                <div class="places-grid fade-in-delay-3">
+                    <div class="place-card" onclick="navigateTo('palacio')">
+                        <div class="card-icon">🏛️</div>
+                        <h3>Palacio Nacional</h3>
+                        <p>Arquitectura e historia</p>
+                    </div>
+                    <div class="place-card" onclick="navigateTo('biblioteca')">
+                        <div class="card-icon">📚</div>
+                        <h3>Biblioteca Nacional</h3>
+                        <p>Cultura y conocimiento</p>
+                    </div>
+                    <div class="place-card" onclick="navigateTo('mercado')">
+                        <div class="card-icon">🛍️</div>
+                        <h3>Mercado Central</h3>
+                        <p>Tradición y artesanías</p>
+                    </div>
+                </div>
+            </div>
         </section>
 
-        <section id="palacio">
-            <h1>Palacio Nacional de la Cultura</h1>
-            
-            <img src="https://www.ultracem.gt/wp-content/uploads/2023/09/Palacio-Nacional-de-la-Cultura.webp" 
-                 alt="Palacio Nacional">
-            
-            <h2>Historia</h2>
-            <p>
-                El Palacio Nacional de la Cultura fue construido entre 1939 y 1943. 
-                Sirvió como sede del Gobierno de Guatemala hasta 1998.
-            </p>
-            
-            <h2>Datos Curiosos</h2>
-            <ul>
-                <li>Tiene más de 300 habitaciones</li>
-                <li>Los vitrales fueron creados por artistas guatemaltecos</li>
-                <li>Es Patrimonio Cultural de la Nación</li>
-            </ul>
-            
-            <h2>Ubicación</h2>
-            <p>6ta Calle y 7ma Avenida, Zona 1</p>
+        <section class="view lugar-view" id="palacio">
+            <div class="lugar-header">
+                <button class="back-btn" onclick="navigateTo('inicio')">← Volver</button>
+                <h1>🏛️ Palacio Nacional de la Cultura</h1>
+            </div>
+            <div class="lugar-container">
+                <div class="lugar-content">
+                    <div class="image-gallery">
+                        <div class="main-image">
+                            <img src="https://www.ultracem.gt/wp-content/uploads/2023/09/Palacio-Nacional-de-la-Cultura.webp" 
+                                 alt="Palacio Nacional de la Cultura" 
+                                 class="lugar-img">
+                        </div>
+                    </div>
+                    <div class="info-section">
+                        <h2>Historia</h2>
+                        <p>
+                            El majestuoso Palacio Nacional de la Cultura es uno de los edificios más emblemáticos 
+                            de Guatemala. Construido entre 1939 y 1943, este monumento histórico sirvió como sede 
+                            del Gobierno de Guatemala hasta 1998.
+                        </p>
+                        <p>
+                            Su arquitectura de estilo renacentista español-colonial destaca por sus impresionantes 
+                            murales, vitrales y decoraciones que narran la historia guatemalteca. Hoy funciona como 
+                            museo y es uno de los principales atractivos turísticos del país.
+                        </p>
+                        
+                        <div class="datos-curiosos">
+                            <h3>✨ Datos Curiosos</h3>
+                            <ul>
+                                <li>Tiene más de 300 habitaciones distribuidas en varios niveles</li>
+                                <li>Los vitrales fueron creados por artistas guatemaltecos</li>
+                                <li>Su construcción empleó piedras volcánicas de diferentes regiones</li>
+                                <li>Es considerado Patrimonio Cultural de la Nación</li>
+                            </ul>
+                        </div>
+
+                        <div class="location-info">
+                            <h3>📍 Ubicación</h3>
+                            <p>6ta Calle y 7ma Avenida, Zona 1, Centro Histórico</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </section>
 
-        <section id="biblioteca">
-            <h1>Biblioteca Nacional de Guatemala</h1>
-            
-            <img src="https://aprende.guatemala.com/wp-content/uploads/2016/10/Biblioteca-Nacional-de-Guatemala-Luis-Cardoza-y-Aragon.jpg" 
-                 alt="Biblioteca Nacional">
-            
-            <h2>Historia</h2>
-            <p>
-                La Biblioteca Nacional "Luis Cardoza y Aragón" fue fundada en 1879. 
-                Es el principal repositorio bibliográfico del país.
-            </p>
-            
-            <h2>Datos Curiosos</h2>
-            <ul>
-                <li>Alberga más de 200,000 volúmenes</li>
-                <li>Conserva documentos desde la época colonial</li>
-                <li>Ofrece servicios gratuitos</li>
-            </ul>
-            
-            <h2>Ubicación</h2>
-            <p>5ta Avenida 7-26, Zona 1</p>
+        <section class="view lugar-view" id="biblioteca">
+            <div class="lugar-header">
+                <button class="back-btn" onclick="navigateTo('inicio')">← Volver</button>
+                <h1>📚 Biblioteca Nacional de Guatemala</h1>
+            </div>
+            <div class="lugar-container">
+                <div class="lugar-content">
+                    <div class="image-gallery">
+                        <div class="main-image">
+                            <img src="https://aprende.guatemala.com/wp-content/uploads/2016/10/Biblioteca-Nacional-de-Guatemala-Luis-Cardoza-y-Aragon.jpg" 
+                                 alt="Biblioteca Nacional de Guatemala" 
+                                 class="lugar-img">
+                        </div>
+                    </div>
+                    <div class="info-section">
+                        <h2>Historia</h2>
+                        <p>
+                            La Biblioteca Nacional "Luis Cardoza y Aragón" es el principal repositorio del 
+                            patrimonio bibliográfico y documental de Guatemala. Fundada en 1879, resguarda 
+                            invaluables colecciones de libros, manuscritos y documentos históricos.
+                        </p>
+                        <p>
+                            Este espacio cultural no solo preserva la memoria histórica del país, sino que 
+                            también promueve la lectura y el acceso al conocimiento para todos los guatemaltecos.
+                        </p>
+                        
+                        <div class="datos-curiosos">
+                            <h3>✨ Datos Curiosos</h3>
+                            <ul>
+                                <li>Alberga más de 200,000 volúmenes en su colección</li>
+                                <li>Conserva documentos desde la época colonial</li>
+                                <li>Ofrece servicios gratuitos de consulta y préstamo</li>
+                                <li>Realiza actividades culturales y exposiciones regularmente</li>
+                            </ul>
+                        </div>
+
+                        <div class="location-info">
+                            <h3>📍 Ubicación</h3>
+                            <p>5ta Avenida 7-26, Zona 1, Centro Histórico</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </section>
 
-        <section id="mercado">
-            <h1>Mercado Central</h1>
-            
-            <img src="https://pbs.twimg.com/media/ClffLhwWYAAsEmq.jpg" 
-                 alt="Mercado Central">
-            
-            <h2>Historia</h2>
-            <p>
-                El Mercado Central fue reconstruido después del terremoto de 1976. 
-                Es el corazón comercial y cultural de la ciudad.
-            </p>
-            
-            <h2>Datos Curiosos</h2>
-            <ul>
-                <li>Cuenta con más de 300 locales comerciales</li>
-                <li>Encuentra artesanías de todos los departamentos</li>
-                <li>Su estructura actual es de la década de 1970</li>
-            </ul>
-            
-            <h2>Ubicación</h2>
-            <p>8va Avenida y 8va Calle, Zona 1</p>
+        <section class="view lugar-view" id="mercado">
+            <div class="lugar-header">
+                <button class="back-btn" onclick="navigateTo('inicio')">← Volver</button>
+                <h1>🛍️ Mercado Central</h1>
+            </div>
+            <div class="lugar-container">
+                <div class="lugar-content">
+                    <div class="image-gallery">
+                        <div class="main-image">
+                            <img src="https://pbs.twimg.com/media/ClffLhwWYAAsEmq.jpg" 
+                                 alt="Mercado Central" 
+                                 class="lugar-img">
+                        </div>
+                    </div>
+                    <div class="info-section">
+                        <h2>Historia</h2>
+                        <p>
+                            El Mercado Central es el corazón comercial y cultural de la Ciudad de Guatemala. 
+                            Reconstruido después del terremoto de 1976, este mercado es un laberinto colorido 
+                            donde convergen tradiciones, artesanías y la esencia guatemalteca.
+                        </p>
+                        <p>
+                            Aquí puedes encontrar desde textiles típicos, jade, artesanías en madera, hasta 
+                            productos de la gastronomía local. Es una experiencia sensorial única que te 
+                            conecta con las raíces del país.
+                        </p>
+                        
+                        <div class="datos-curiosos">
+                            <h3>✨ Datos Curiosos</h3>
+                            <ul>
+                                <li>Cuenta con más de 300 locales comerciales</li>
+                                <li>Es el lugar ideal para comprar souvenirs auténticos</li>
+                                <li>Encuentra productos de todos los departamentos de Guatemala</li>
+                                <li>Su estructura actual data de la década de 1970</li>
+                            </ul>
+                        </div>
+
+                        <div class="location-info">
+                            <h3>📍 Ubicación</h3>
+                            <p>8va Avenida y 8va Calle, Zona 1, Centro Histórico</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </section>
     </main>
 
-    <footer>
+    <footer id="footer">
         <h3>Sistema de Turismo Inteligente</h3>
-        <p>Proyecto USAC - Arquitectura de Computadores</p>
-        <p>&copy; 2025</p>
+        <p>Proyecto de Arquitectura de Computadoras y Ensambladores - USAC</p>
+        <p>Centro Histórico de la Zona 1, Ciudad de Guatemala</p>
+        <div class="social-links">
+            <a href="#" onclick="return false;">Facebook</a>
+            <a href="#" onclick="return false;">Instagram</a>
+            <a href="#" onclick="return false;">Twitter</a>
+        </div>
+        <p style="margin-top: 2rem; font-size: 0.9rem;">© 2025 - Todos los derechos reservados</p>
     </footer>
+
+    <div class="modal" id="qrModal">
+        <div class="modal-content">
+            <span class="close-modal" onclick="closeModal()">&times;</span>
+            <h2>📱 Códigos QR</h2>
+            <p>Escanea los códigos QR ubicados en cada punto histórico de la maqueta para acceder directamente a la información:</p>
+            <div class="qr-list">
+                <div class="qr-item">
+                    <span>🏛️</span>
+                    <p>Palacio Nacional</p>
+                </div>
+                <div class="qr-item">
+                    <span>📚</span>
+                    <p>Biblioteca Nacional</p>
+                </div>
+                <div class="qr-item">
+                    <span>🛍️</span>
+                    <p>Mercado Central</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/app.js"></script>
 </body>
 </html>
