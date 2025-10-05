@@ -327,10 +327,9 @@ main {
 }
 
 .datos-curiosos li:before {
-    content: "✨";
+    content: "🎯";
     position: absolute;
     left: 0;
-    filter: hue-rotate(260deg);
 }
 
 footer {
