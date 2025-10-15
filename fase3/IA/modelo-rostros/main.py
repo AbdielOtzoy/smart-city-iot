@@ -1,9 +1,14 @@
 import face_recognition
 import cv2
 import numpy as np
+import os
+import requests
 import time
+import json
 
-video_capture = cv2.VideoCapture(2)
+URL_SERVER = "http://10.102.200.171:3000/api/info"
+
+video_capture = cv2.VideoCapture(0)
 
 obama_image = face_recognition.load_image_file("obama.jpg")
 obama_face_encoding = face_recognition.face_encodings(obama_image)[0]
@@ -22,7 +27,7 @@ known_face_encodings = [
 known_face_names = [
     "Barack Obama",
     "Joe Biden",
-    "Ladron"
+    "Yo"
 ]
 
 
@@ -62,6 +67,21 @@ while True:
                    
                     print(f"¡Cara detectada!: {name}")
                     last_detection_time[name] = current_time
+                    payload = {
+                        "tipo": "persona",
+                        "data": name,
+                        "timestamp": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+                    }
+                    print("Enviando datos al servidor..." + str(payload))
+                    try:
+                        response = requests.post(URL_SERVER, json=payload, timeout=5, headers={"Content-Type": "application/json"})
+                        if response.status_code == 200:
+                            print("Datos enviados correctamente.")
+                        else:
+                            print(f"Error al enviar datos: {response.status_code}")
+                    except requests.exceptions.RequestException as e:
+                        print(f"Excepción al enviar datos: {e}")
+
             face_names.append(name)
 
     process_this_frame = not process_this_frame
