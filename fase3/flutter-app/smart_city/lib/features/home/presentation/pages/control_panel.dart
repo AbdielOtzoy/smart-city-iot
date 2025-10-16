@@ -47,7 +47,8 @@ class ControlPanel extends StatelessWidget {
           AlertsPieCountSection(),
           SizedBox(height: 12),
           TopPersonasSection(),
-          SizedBox(height: 12)
+          SizedBox(height: 12),
+          TopArmasSection()
         ],
       ),
     );
@@ -1375,6 +1376,116 @@ class _TopPersonasSectionState extends State<TopPersonasSection> {
                             title: Text(entry.key, style: const TextStyle(fontWeight: FontWeight.bold)),
                             subtitle: Text('${entry.value} detecciones'),
                             trailing: const Icon(Icons.person, color: Colors.deepPurple),
+                          ),
+                        );
+                      },
+                    ),
+    );
+  }
+}
+
+// Top de armas blancas
+class TopArmasSection extends StatefulWidget {
+  const TopArmasSection({super.key});
+
+  @override
+  State<TopArmasSection> createState() => _TopArmasSectionState();
+}
+
+class _TopArmasSectionState extends State<TopArmasSection> {
+  final _api = ApiClient();
+  bool _loading = true;
+  String? _error;
+  Timer? _timer;
+  Map<String, int> _topArmas = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+    _timer = Timer.periodic(const Duration(seconds: 20), (_) => _load());
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _load() async {
+    try {
+      final alertas = await _api.fetchAlertas(limit: 200);
+      if (mounted) {
+        // solo tipo arma
+        final armas = alertas.where((a) => a.tipo.toLowerCase() == 'arma').toList();
+        // frecuencia de cada tipo
+        final freq = <String, int>{};
+        for (final a in armas) {
+          freq[a.data] = (freq[a.data] ?? 0) + 1;
+        }
+        // Ordenar por mayor frecuencia
+        final sorted = freq.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
+        setState(() {
+          _topArmas = Map.fromEntries(sorted.take(10));
+          _loading = false;
+          _error = null;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() => _error = e.toString());
+    }
+  }
+
+  IconData _getArmaIcon(String tipoArma) {
+    switch (tipoArma.toLowerCase()) {
+      case 'cuchillo':
+        return Icons.kitchen;
+      case 'navaja':
+        return Icons.content_cut;
+      case 'machete':
+        return Icons.agriculture;
+      default:
+        return Icons.warning;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return KpiCard(
+      title: 'Top Armas Blancas Detectadas',
+      child: _error != null
+          ? Column(
+              children: [
+                Text('Error: $_error', style: const TextStyle(color: Colors.red)),
+                TextButton(onPressed: _load, child: const Text('Reintentar')),
+              ],
+            )
+          : _loading
+              ? const Center(child: CircularProgressIndicator())
+              : _topArmas.isEmpty
+                  ? const Center(child: Text('No hay datos'))
+                  : ListView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: _topArmas.length,
+                      itemBuilder: (ctx, i) {
+                        final entry = _topArmas.entries.elementAt(i);
+                        return Card(
+                          margin: const EdgeInsets.symmetric(vertical: 4),
+                          child: ListTile(
+                            leading: CircleAvatar(
+                              backgroundColor: Colors.redAccent,
+                              child: Icon(_getArmaIcon(entry.key), color: Colors.white, size: 20),
+                            ),
+                            title: Text(
+                              '${entry.key[0].toUpperCase()}${entry.key.substring(1)}',
+                              style: const TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                            subtitle: Text('${entry.value} detecciones'),
+                            trailing: Text(
+                              '#${i + 1}',
+                              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.grey),
+                            ),
                           ),
                         );
                       },
