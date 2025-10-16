@@ -42,7 +42,7 @@ Las principales actividades fueron:
 | **Christian** | Encargado de la documentación y pruebas generales del sistema. Elaboró el reporte técnico semanal. |
 | **Bryan** | Diseñó el esquema de base de datos extendido con tablas de detecciones e integró el endpoint `/api/info`. |
 | **Daniel** | Realizó los diagramas de arquitectura de la Fase 3 y participó en la configuración del entorno IoT. |
-| **Rabit** | Implementó los widgets de “Alertas en Tiempo Real” en Flutter y probó la comunicación con la API. |
+| **Jhonatan** | Implementó los widgets de “Alertas en Tiempo Real” en Flutter y probó la comunicación con la API. |
 
 ---
 
