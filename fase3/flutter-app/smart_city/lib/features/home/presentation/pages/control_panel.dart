@@ -48,7 +48,9 @@ class ControlPanel extends StatelessWidget {
           SizedBox(height: 12),
           TopPersonasSection(),
           SizedBox(height: 12),
-          TopArmasSection()
+          TopArmasSection(),
+          SizedBox(height: 12),
+          InfraccionesSection(),
         ],
       ),
     );
@@ -1490,6 +1492,137 @@ class _TopArmasSectionState extends State<TopArmasSection> {
                         );
                       },
                     ),
+    );
+  }
+}
+
+// placas
+class InfraccionesSection extends StatefulWidget {
+  const InfraccionesSection({super.key});
+
+  @override
+  State<InfraccionesSection> createState() => _InfraccionesSectionState();
+}
+
+class _InfraccionesSectionState extends State<InfraccionesSection> {
+  final _api = ApiClient();
+  List<Alerta> _data = [];
+  bool _loading = true;
+  String? _error;
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+    _timer = Timer.periodic(const Duration(seconds: 20), (_) => _load());
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _load() async {
+    try {
+      final alertas = await _api.fetchAlertas(limit: 200);
+      if (mounted) {
+        // nomas filtrar por placa
+        final infracciones = alertas.where((a) {
+          final tipo = a.tipo.trim().toLowerCase();
+          return tipo == 'placa';
+        }).toList();
+        
+        setState(() {
+          _data = infracciones;
+          _loading = false;
+          _error = null;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() => _error = e.toString());
+    }
+  }
+
+  String _formatTime(DateTime dt) {
+    return '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}:${dt.second.toString().padLeft(2, '0')}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return KpiCard(
+      title: 'Infracciones y Placas Detectadas',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.red.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.warning, color: Colors.red, size: 32),
+                const SizedBox(width: 12),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Total Infracciones', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                    Text(
+                      _loading ? '...' : '${_data.length}',
+                      style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.red),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          _error != null
+              ? Column(
+                  children: [
+                    Text('Error: $_error', style: const TextStyle(color: Colors.red)),
+                    TextButton(onPressed: _load, child: const Text('Reintentar')),
+                  ],
+                )
+              : _loading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _data.isEmpty
+                      ? const Center(child: Padding(
+                          padding: EdgeInsets.all(16.0),
+                          child: Text('No hay infracciones ni placas registradas'),
+                        ))
+                      : ListView.builder(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: _data.length,
+                          itemBuilder: (ctx, i) {
+                            final infraccion = _data[i];
+                            return Card(
+                              margin: const EdgeInsets.symmetric(vertical: 4),
+                              child: ListTile(
+                                leading: Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: Colors.red,
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: const Icon(Icons.directions_car, color: Colors.white),
+                                ),
+                                title: Text(
+                                  infraccion.data,
+                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                                ),
+                                subtitle: Text('Hora: ${_formatTime(infraccion.timestamp)}'),
+                                trailing: const Icon(Icons.traffic, color: Colors.red),
+                              ),
+                            );
+                          },
+                        ),
+        ],
+      ),
     );
   }
 }
