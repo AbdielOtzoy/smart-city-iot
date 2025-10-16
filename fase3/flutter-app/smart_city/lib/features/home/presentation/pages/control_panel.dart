@@ -45,6 +45,9 @@ class ControlPanel extends StatelessWidget {
           AlertsByTypeSection(),
           SizedBox(height: 12),
           AlertsPieCountSection(),
+          SizedBox(height: 12),
+          TopPersonasSection(),
+          SizedBox(height: 12)
         ],
       ),
     );
@@ -1284,6 +1287,98 @@ class _AlertsPieCountSectionState extends State<AlertsPieCountSection> {
               .toList(),
         ),
       ],
+    );
+  }
+}
+
+// 3era fase
+// Top de personas
+class TopPersonasSection extends StatefulWidget {
+  const TopPersonasSection({super.key});
+
+  @override
+  State<TopPersonasSection> createState() => _TopPersonasSectionState();
+}
+
+class _TopPersonasSectionState extends State<TopPersonasSection> {
+  final _api = ApiClient();
+  bool _loading = true;
+  String? _error;
+  Timer? _timer;
+  Map<String, int> _topPersonas = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+    _timer = Timer.periodic(const Duration(seconds: 20), (_) => _load());
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _load() async {
+    try {
+      final alertas = await _api.fetchAlertas(limit: 200);
+      if (mounted) {
+        // Filtrar solo alertas tipo persona pra no tener todos a la vez
+        final personas = alertas.where((a) => a.tipo.toLowerCase() == 'persona').toList();
+        // Contador de frecuencia
+        final freq = <String, int>{};
+        for (final p in personas) {
+          freq[p.data] = (freq[p.data] ?? 0) + 1;
+        }
+        // ordenamiento
+        final sorted = freq.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
+        setState(() {
+          _topPersonas = Map.fromEntries(sorted.take(10));
+          _loading = false;
+          _error = null;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() => _error = e.toString());
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return KpiCard(
+      title: 'Top Personas Detectadas en Lista Negra',
+      child: _error != null
+          ? Column(
+              children: [
+                Text('Error: $_error', style: const TextStyle(color: Colors.red)),
+                TextButton(onPressed: _load, child: const Text('Reintentar')),
+              ],
+            )
+          : _loading
+              ? const Center(child: CircularProgressIndicator())
+              : _topPersonas.isEmpty
+                  ? const Center(child: Text('No hay datos'))
+                  : ListView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: _topPersonas.length,
+                      itemBuilder: (ctx, i) {
+                        final entry = _topPersonas.entries.elementAt(i);
+                        return Card(
+                          margin: const EdgeInsets.symmetric(vertical: 4),
+                          child: ListTile(
+                            leading: CircleAvatar(
+                              backgroundColor: Colors.deepPurple,
+                              child: Text('${i + 1}', style: const TextStyle(color: Colors.white)),
+                            ),
+                            title: Text(entry.key, style: const TextStyle(fontWeight: FontWeight.bold)),
+                            subtitle: Text('${entry.value} detecciones'),
+                            trailing: const Icon(Icons.person, color: Colors.deepPurple),
+                          ),
+                        );
+                      },
+                    ),
     );
   }
 }
