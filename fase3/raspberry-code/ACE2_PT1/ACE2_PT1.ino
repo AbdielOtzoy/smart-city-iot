@@ -41,7 +41,7 @@ const int mqPinA0 = A0;
 const int mqPinA1 = A1;  
 const int mqPinA2 = A2;  
 float mqReadings[3];  
-const float mqThreshold = 400.0; // AQuí ESTÁ EL UMBRAL PARA LOS MQ --- RECORDEMOS TESTEARLO --- 
+const float mqThreshold = 1400.0; // AQuí ESTÁ EL UMBRAL PARA LOS MQ --- RECORDEMOS TESTEARLO --- 
 
 // Piezos eléctricos
 const int piezoPin = 20;
@@ -72,24 +72,50 @@ unsigned long getPhaseDuration(int type, int step, int phase) {
   switch (type) {
     case 1: // Alarma 1: Botones - 3 pitidos cortos (200ms ON, 200ms OFF)
       if (step >= 3) return 0;
-      if (phase == 0) return 200; // ON
-      return (step < 2 ? 200 : 0); // OFF solo entre pitidos, no después del último
+      if (phase == 0) return 200;
+      return (step < 2 ? 200 : 0);
+      
     case 2: // Alarma 2: Movimiento en rojo - 2 pitidos largos (500ms ON, 300ms OFF)
       if (step >= 2) return 0;
-      if (phase == 0) return 500; // ON
-      return (step < 1 ? 300 : 0); // OFF solo entre pitidos
+      if (phase == 0) return 500;
+      return (step < 1 ? 300 : 0);
+      
     case 3: // Alarma 3: Piezo - 5 pitidos rápidos (100ms ON, 100ms OFF)
       if (step >= 5) return 0;
-      if (phase == 0) return 100; // ON
-      return (step < 4 ? 100 : 0); // OFF solo entre pitidos
+      if (phase == 0) return 100;
+      return (step < 4 ? 100 : 0);
+      
     case 4: // Alarma 4: MQ bajo - Pitido continuo largo (2000ms ON)
       if (step >= 1) return 0;
-      if (phase == 0) return 2000; // ON
-      return 0; // No OFF
+      if (phase == 0) return 2000;
+      return 0;
+      
+    // ====== NUEVOS TIPOS PARA DETECCIONES DE API ======
+    case 5: // Alarma 5: ARMA DETECTADA - Alarma urgente (300ms ON, 200ms OFF, 10 repeticiones)
+      if (step >= 10) return 0;
+      if (phase == 0) return 300; // ON
+      return (step < 9 ? 200 : 0); // OFF entre pitidos
+      
+    case 6: // Alarma 6: PERSONA DETECTADA - 4 pitidos medios (250ms ON, 150ms OFF)
+      if (step >= 4) return 0;
+      if (phase == 0) return 250; // ON
+      return (step < 3 ? 150 : 0); // OFF entre pitidos
+      
+    case 7: // Alarma 7: PLACA DETECTADA - Patrón distintivo (1 largo + 2 cortos)
+      if (step >= 3) return 0;
+      if (step == 0) { // Primer pitido largo
+        if (phase == 0) return 500; // ON
+        return 200; // OFF
+      } else { // Pitidos cortos
+        if (phase == 0) return 150; // ON
+        return (step < 2 ? 150 : 0); // OFF solo entre pitidos
+      }
+      
     default:
       return 0;
   }
 }
+
 
 // Activar buzzer en una zona con un tipo de alarma específico
 void ActivarBuzzZonaConTipo(int zona, int tipo) {  
@@ -375,24 +401,84 @@ void enviarDatosAProcessing() {
   }
 }
 
+void procesarComandoSerial() {
+  if (Serial.available() > 0) {
+    String comando = Serial.readStringUntil('\n');
+    comando.trim(); // Eliminar espacios y saltos de línea
+    
+    // Formato esperado: ALERT:tipo:zona
+    // Ejemplos:
+    //   ALERT:ARMA:1        -> Activa alarma de arma en zona 1
+    //   ALERT:PERSONA:2     -> Activa alarma de persona en zona 2
+    //   ALERT:PLACA:0       -> Activa alarma de placa en zona 0
+    //   ALERT:ARMA:ALL      -> Activa alarma de arma en todas las zonas
+    
+    if (comando.startsWith("ALERT:")) {
+      // Remover prefijo "ALERT:"
+      comando.remove(0, 6);
+      
+      // Separar tipo y zona
+      int separador = comando.indexOf(':');
+      if (separador > 0) {
+        String tipo = comando.substring(0, separador);
+        String zonaStr = comando.substring(separador + 1);
+        
+        int tipoAlarma = 0;
+        
+        // Determinar tipo de alarma
+        if (tipo == "ARMA") {
+          tipoAlarma = 4;
+          Serial.println("RECV: ALERTA DE ARMA DETECTADA");
+        } else if (tipo == "PERSONA") {
+          tipoAlarma = 4;
+          Serial.println("RECV: ALERTA DE PERSONA DETECTADA");
+        } else if (tipo == "PLACA") {
+          tipoAlarma = 4;
+          Serial.println("RECV: ALERTA DE PLACA DETECTADA");
+        } else {
+          Serial.println("ERROR: Tipo de alerta desconocido: " + tipo);
+          return;
+        }
+        
+        // Activar buzzer según zona
+        if (zonaStr == "ALL") {
+          ActivarTodosBuzz();
+          Serial.println("ACTIVADO: Todas las zonas");
+        } else {
+          // Activar en zona específica
+          int zona = zonaStr.toInt();
+          if (zona >= 0 && zona < 3) {
+            ActivarBuzzZonaConTipo(zona, tipoAlarma);
+            Serial.println("ACTIVADO: Zona " + String(zona));
+          } else {
+            Serial.println("ERROR: Zona inválida: " + zonaStr);
+          }
+        }
+      }
+    } else {
+      Serial.println("ERROR: Comando no reconocido");
+    }
+  }
+}
 
 // Loop
 void loop() {
+  procesarComandoSerial();
+
   static int estadoSemaforoIndex = 0;          // índice para ciclo de semáforos
   static unsigned long cambioTiempo = 0;       // tiempo de cambio
   const unsigned long tiempoEstado = 5000;     // 5 segundos por estado
   
-// Leer sensores MQ
-leerMQSensors();
+  // Leer sensores MQ
+  leerMQSensors();
 
-// Verificar y activar alarmas para MQ (tipo 4)
-verificarMQYActivar();
+  // Verificar y activar alarmas para MQ (tipo 4)
+  verificarMQYActivar();
 
-// Leer HC-SR04 para las 7 zonas
-leerHC_SR04();
+  // Leer HC-SR04 para las 7 zonas
+  leerHC_SR04();
 
-  // Gestión de buzzers (tiempos y patrones)
-  gestionarBuzzers();
+  
 
   // Actualizar estados actuales de semáforos
   estadoActualSem1 = estados[estadoSemaforoIndex][0];
@@ -423,4 +509,5 @@ leerHC_SR04();
     }
   enviarDatosAProcessing();
   delay(1000); // ajuste de tiempo según veamos la velocidad
+  gestionarBuzzers();
 }

@@ -13,7 +13,7 @@ class ArduinoRawReader:
         self.baudrate = baudrate
         self.timeout = timeout
         self.serial_connection = None
-        self.mqtt_client = mqtt.Client()  # Usa API por defecto
+        self.mqtt_client = mqtt.Client() 
         self.mqtt_broker = mqtt_broker
         self.mqtt_port = mqtt_port
         self.mqtt_topics = {
@@ -35,17 +35,17 @@ class ArduinoRawReader:
                 baudrate=self.baudrate,
                 timeout=self.timeout
             )
-            print(f"Conectado al puerto {self.port} a {self.baudrate} baudios")
-            time.sleep(2)  # Esperar a que la conexión serial se estabilice
+            print(f" Conectado al puerto {self.port} a {self.baudrate} baudios")
+            time.sleep(2)
         except serial.SerialException as e:
-            print(f"Error conectando al puerto {self.port}: {e}")
+            print(f" Error conectando al puerto {self.port}: {e}")
             return False
 
         try:
             self.mqtt_client.connect(self.mqtt_broker, self.mqtt_port, 60)
-            print(f"Conectado al broker MQTT {self.mqtt_broker}:{self.mqtt_port}")
+            print(f" Conectado al broker MQTT {self.mqtt_broker}:{self.mqtt_port}")
         except Exception as e:
-            print(f"Error conectando al broker MQTT: {e}")
+            print(f" Error conectando al broker MQTT: {e}")
             return False
 
         return True
@@ -54,12 +54,11 @@ class ArduinoRawReader:
         """Cierra la conexión serial y el cliente MQTT"""
         if self.serial_connection and self.serial_connection.is_open:
             self.serial_connection.close()
-            print("Conexión serial cerrada")
+            print(" Conexión serial cerrada")
         self.mqtt_client.disconnect()
-        print("Conexión MQTT cerrada")
+        print(" Conexión MQTT cerrada")
     
     def _hora_actual_iso(self):
-        # Hora en formato ISO 8601 para claridad
         return datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
     
     def parse_raw_data(self, lines):
@@ -67,7 +66,6 @@ class ArduinoRawReader:
         if not lines:
             return None
 
-        # Inicializar estructuras JSON
         data = {
             "trafico": {"semaforos": {}},
             "bus": {},
@@ -85,7 +83,7 @@ class ArduinoRawReader:
                 continue
 
             try:
-                # Parsear SEMAFORO (corrige errores tipográficos como EMAFORO)
+                # Parsear SEMAFORO
                 if parts[0].startswith("SEMAFORO") or parts[0].startswith("EMAFORO"):
                     sem_id = parts[1]
                     estado = parts[2]
@@ -94,13 +92,13 @@ class ArduinoRawReader:
                 # Parsear BUS
                 elif parts[0] == "BUS":
                     bus_type = parts[1].lower()
-                    distancia = float(parts[2])  # Usar float para manejar decimales
+                    distancia = float(parts[2])
                     data["bus"][bus_type] = distancia
 
                 # Parsear DISTANCIA
                 elif parts[0] == "Distancia" and parts[1] == "Zona":
                     zona_id = parts[2]
-                    distancia = float(parts[3])  # Usar float para manejar decimales
+                    distancia = float(parts[3])
                     data["distancias"]["zona" + zona_id] = distancia
 
                 # Parsear INCENDIO
@@ -108,9 +106,8 @@ class ArduinoRawReader:
                     incendio_parts = parts[0].split(":")[1:] + parts[1:]
                     if len(incendio_parts) >= 3:
                         incendio_id = int(incendio_parts[0])
-                        nivel = float(incendio_parts[1])  # Usar float para manejar decimales
+                        nivel = float(incendio_parts[1])
                         estado = incendio_parts[2]
-                        # Corregir errores tipográficos como RILLO
                         estado = "NORMAL" if estado in ["NORMAL", "RILLO"] else estado
                         incendio = {
                             "id": incendio_id,
@@ -122,7 +119,7 @@ class ArduinoRawReader:
                 # Parsear MQ (Ambiente)
                 elif parts[0].startswith("MQ"):
                     sensor_id = int(parts[0].replace("MQ", "")) - 1
-                    nivel = float(parts[1])  # Usar float para manejar decimales
+                    nivel = float(parts[1])
                     data["ambiente"]["mq_sensors"].append({"id": sensor_id, "nivel": nivel})
 
                 # Parsear SISMO
@@ -151,10 +148,9 @@ class ArduinoRawReader:
                     data["infraccion"].append(infraccion)
 
             except (ValueError, IndexError) as e:
-                print(f"Error parseando línea '{line}': {e}")
+                print(f" Error parseando línea '{line}': {e}")
                 continue
 
-        # Solo devolver datos no vacíos
         return {key: value for key, value in data.items() if value and (isinstance(value, list) and len(value) > 0 or isinstance(value, dict) and len(value) > 0)}
     
     def read_raw_data(self):
@@ -166,7 +162,7 @@ class ArduinoRawReader:
             lines = []
             start_time = time.time()
             
-            while time.time() - start_time < 5:  # Timeout de 5 segundos
+            while time.time() - start_time < 5:
                 if self.serial_connection.in_waiting > 0:
                     line = self.serial_connection.readline().decode('utf-8', errors='ignore').strip()
                     if line:
@@ -175,84 +171,71 @@ class ArduinoRawReader:
             
             return lines
         except Exception as e:
-            print(f"Error leyendo datos: {e}")
+            print(f" Error leyendo datos: {e}")
             return None
     
     def publish_mqtt(self, data):
-        """Publica los datos JSON en los tópicos MQTT correspondientes
-        Cada payload se envía con su hora de publicación y se reemplaza cualquier timestamp existente por la hora actual."""
+        """Publica los datos JSON en los tópicos MQTT correspondientes"""
         try:
             hora_envio = self._hora_actual_iso()
             for category, payload in data.items():
                 if payload:
                     topic = self.mqtt_topics.get(category)
                     if topic:
-                        # Asegurar que el payload tenga su campo de hora
-                        # Si ya existe "timestamp" dentro de payload, lo reemplazamos por hora_envio
-                        # Dependiendo de la estructura del payload, actualizamos o añadimos.
                         if isinstance(payload, dict):
                             payload_with_time = dict(payload)
                             payload_with_time["timestamp"] = hora_envio
                         else:
-                            # Si por alguna razón no es dict (p. ej., lista), envolvemos en dict
                             payload_with_time = {"data": payload, "timestamp": hora_envio}
                         json_data = json.dumps(payload_with_time)
                         self.mqtt_client.publish(topic, json_data)
-                        print(f"Datos publicados en {topic}: {json_data}")
+                        print(f" Publicado en {topic}")
                     else:
-                        print(f"No se encontró tópico para la categoría {category}")
+                        print(f" No se encontró tópico para {category}")
         except Exception as e:
-            print(f"Error publicando en MQTT: {e}")
+            print(f" Error publicando en MQTT: {e}")
 
     def run_continuous(self, interval=1):
         """Ejecuta lectura continua, convierte a JSON y publica en MQTT"""
-        print(f"Iniciando lectura continua cada {interval} segundos...")
+        print(f" Iniciando lectura continua cada {interval} segundos...")
+        print("   Presiona Ctrl+C para detener")
         
         try:
             while True:
-                print(f"\nLeyendo datos... [{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}]")
-                
                 raw_data = self.read_raw_data()
                 if raw_data:
-                    print("Datos crudos recibidos:")
-                    for line in raw_data:
-                        print(line)
-                    
-                    # Convertir a JSON
                     json_data = self.parse_raw_data(raw_data)
                     if json_data:
-                        print("JSONs generados:")
-                        for category, payload in json_data.items():
-                            print(f"{category}: {json.dumps(payload, indent=2)}")
-                        # Publicar en MQTT (con hora)
                         self.publish_mqtt(json_data)
-                    else:
-                        print("No se pudo parsear los datos a JSON")
-                else:
-                    print("No se recibieron datos")
                 
-                print(f"Esperando {interval} segundos")
                 time.sleep(interval)
                 
         except KeyboardInterrupt:
-            print("\nLectura detenida por el usuario")
+            print("\n Lectura detenida por el usuario")
         except Exception as e:
-            print(f"Error durante la lectura continua: {e}")
+            print(f" Error durante la lectura continua: {e}")
         finally:
             self.disconnect()
 
 def main():
+    print("=" * 60)
+    print(" Arduino Raw Reader + MQTT Publisher")
+    print("=" * 60)
+    
     reader = ArduinoRawReader(
         port='/dev/ttyACM0',
         baudrate=9600,
         mqtt_broker='broker.emqx.io',
         mqtt_port=1883
     )
+    
     if reader.connect():
         try:
             reader.run_continuous(interval=1)
         finally:
             reader.disconnect()
+    else:
+        print(" No se pudo iniciar el sistema")
 
 if __name__ == "__main__":
     main()
