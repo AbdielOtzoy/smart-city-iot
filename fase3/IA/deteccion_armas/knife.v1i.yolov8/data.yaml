@@ -1,8 +1,0 @@
-path: ../knife.v1i.yolov8
-train: train/images
-val: train/images
-
-names:
-  0: knife
-  1: gun
-  2: pistol

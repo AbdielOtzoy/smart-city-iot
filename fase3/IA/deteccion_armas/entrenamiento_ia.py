@@ -1,7 +1,4 @@
-"""
-Script para ENTRENAR modelo YOLOv8 de detección de armas
-SIN EMOJIS - VERSION LIMPIA
-"""
+
 
 from ultralytics import YOLO
 import os
@@ -80,7 +77,7 @@ def entrenar_modelo(data_yaml_path, epochs=50, img_size=640):
     
     # Cargar modelo pre-entrenado de YOLOv8
     print("Descargando modelo base YOLOv8n (más pequeño y rápido)...")
-    modelo = YOLO('yolov8n.pt')  # n=nano (más rápido), también puedes usar: s, m, l, x
+    modelo = YOLO('yolov8n.pt')  
     
     # Entrenar
     print("\nIniciando entrenamiento! Esto puede tomar varios minutos u horas...\n")
@@ -88,8 +85,9 @@ def entrenar_modelo(data_yaml_path, epochs=50, img_size=640):
         data=data_yaml_path,
         epochs=epochs,
         imgsz=img_size,
-        batch=16,  # Ajusta según tu RAM/GPU
-        patience=10,  # Para detención temprana
+        device='0',  
+        batch=16,  
+        patience=10,  
         save=True,
         project='runs/detect',
         name='weapon_detection',
@@ -104,7 +102,7 @@ def entrenar_modelo(data_yaml_path, epochs=50, img_size=640):
         cos_lr=False,
         close_mosaic=10,
         resume=False,
-        amp=True,  # Mixed precision
+        amp=True,  
         fraction=1.0,
         profile=False,
         overlap_mask=True,
