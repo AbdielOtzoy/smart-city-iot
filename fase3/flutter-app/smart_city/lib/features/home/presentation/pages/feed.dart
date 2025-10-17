@@ -77,6 +77,9 @@ class _FeedPageState extends State<FeedPage> {
 
   @override
   Widget build(BuildContext context) {
+    // Opciones principales para filtrar
+    final tiposSet = ['PERSONA', 'ARMA', 'INFRACCION'];
+
     return Scaffold(
       appBar: AppBar(title: Text("Alertas en Tiempo Real")),
       drawer: HomeDrawer(),
@@ -159,50 +162,45 @@ class _FeedPageState extends State<FeedPage> {
                         // Filtros
                         if ((data['alertas'] as List<dynamic>? ?? []).isNotEmpty)
                           Card(
-                          child: Padding(
-                            padding: const EdgeInsets.all(16.0),
-                            child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                              children: [
-                                Text('Filtrar por tipo:', style: TextStyle(fontWeight: FontWeight.bold)),
-                                const SizedBox(width: 8),
-                                DropdownButton<String>(
-                                value: selectedTipo,
-                                hint: Text('Selecciona tipo'),
-                                items: [
-                                  ...((data['alertas'] as List<dynamic>? ?? [])
-                                  .map((a) => a['tipo']?.toString() ?? '')
-                                  .toSet()
-                                  .map((tipo) => DropdownMenuItem<String>(
-                                      value: tipo,
-                                      child: Text(tipo.toUpperCase()),
-                                    )))
+                            child: Padding(
+                              padding: const EdgeInsets.all(16.0),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Text('Filtrar por tipo:', style: TextStyle(fontWeight: FontWeight.bold)),
+                                      const SizedBox(width: 8),
+                                      DropdownButton<String>(
+                                        value: selectedTipo,
+                                        hint: Text('Selecciona tipo'),
+                                        items: tiposSet.map((tipo) => DropdownMenuItem<String>(
+                                          value: tipo,
+                                          child: Text(tipo.toUpperCase()),
+                                        )).toList(),
+                                        onChanged: (value) {
+                                          setState(() {
+                                            selectedTipo = value;
+                                          });
+                                        },
+                                      ),
+                                    ],
+                                  ),
+                                  if (selectedTipo != null)
+                                    Padding(
+                                      padding: const EdgeInsets.only(top: 8.0),
+                                      child: TextButton(
+                                        onPressed: () {
+                                          setState(() {
+                                            selectedTipo = null;
+                                          });
+                                        },
+                                        child: Text('Limpiar filtro'),
+                                      ),
+                                    ),
                                 ],
-                                onChanged: (value) {
-                                  setState(() {
-                                  selectedTipo = value;
-                                  });
-                                },
-                                ),
-                              ],
                               ),
-                              if (selectedTipo != null)
-                              Padding(
-                                padding: const EdgeInsets.only(top: 8.0),
-                                child: TextButton(
-                                onPressed: () {
-                                  setState(() {
-                                  selectedTipo = null;
-                                  });
-                                },
-                                child: Text('Limpiar filtro'),
-                                ),
-                              ),
-                            ],
                             ),
-                          ),
                           ),
                         
                         const SizedBox(height: 16),
@@ -230,15 +228,69 @@ class _FeedPageState extends State<FeedPage> {
                           )
                         else
                           ...((data['alertas'] as List<dynamic>? ?? [])
-                              .where((a) => selectedTipo == null || a['tipo'] == selectedTipo)
+                              .where((a) {
+                                final rawType = ((a['tipo'] ?? a['clase'])?.toString() ?? '').toUpperCase();
+                                if (selectedTipo == null) return true;
+                                switch (selectedTipo) {
+                                  case 'PERSONA':
+                                    return rawType == 'PERSONA';
+                                  case 'ARMA':
+                                    return rawType == 'ARMA_BLANCA' || rawType == 'ARMA_FUEGO';
+                                  case 'INFRACCION':
+                                    return rawType == 'PLACAS' || rawType == 'INFRACCION';
+                                  default:
+                                    return false;
+                                }
+                              })
                               .map((a) {
+                                // ...existing code...
+                                final rawType = ((a['tipo'] ?? a['clase'])?.toString() ?? '').toUpperCase();
                                 Color cardColor;
                                 Color iconColor;
                                 Color textColor = Colors.black;
                                 Color subtitleColor = Colors.grey[700]!;
                                 IconData alertIcon;
-                                
-                                switch (a['tipo']?.toString().toUpperCase()) {
+                                String titleText = rawType;
+                                String line1 = 'Detalle: ${a['data'] ?? a['data'] ?? 'N/A'}';
+                                String line2 = 'Fecha: ${a['timestamp'] ?? a['timestamp'] ?? 'N/A'}';
+
+                                final isBlacklisted = (a['lista_negra'] == true) ||
+                                    (a['blacklist'] == true) ||
+                                    (a['blacklisted'] == true) ||
+                                    ((a['data'] is String) && (a['data'].toString().toLowerCase().contains('lista') || a['data'].toString().toLowerCase().contains('black')));
+
+                                switch (rawType) {
+                                  case 'ARMA_BLANCA':
+                                  case 'ARMA_FUEGO':
+                                    cardColor = const Color.fromARGB(240, 187, 82, 98);
+                                    iconColor = Colors.red;
+                                    textColor = Colors.white;
+                                    subtitleColor = Colors.white70;
+                                    alertIcon = Icons.security;
+                                    titleText = (a['tipo']?.toString().toUpperCase() ?? 'ARMA');
+                                    line1 = 'Subtipo: ${a['subtipo'] ?? 'N/A'}';
+                                    line2 = 'Fecha: ${a['timestamp'] ?? 'N/A'}';
+                                    break;
+                                  case 'LADRON':
+                                    cardColor = Colors.deepPurple[300]!;
+                                    iconColor = Colors.purple;
+                                    alertIcon = Icons.person;
+                                    titleText = isBlacklisted ? 'LADRÓN (LISTA NEGRA)' : 'LADRÓN';
+                                    textColor = Colors.white;
+                                    subtitleColor = Colors.white70;
+                                    line1 = 'Nombre: ${a['data'] ?? 'N/A'}';
+                                    line2 = 'Fecha: ${a['timestamp'] ?? 'N/A'}';
+                                    break;
+                                  case 'PLACAS':
+                                    cardColor = Colors.teal.shade200;
+                                    iconColor = Colors.teal.shade900;
+                                    alertIcon = Icons.directions_car;
+                                    titleText = 'INFRACCIÓN - PLACA';
+                                    textColor = Colors.black;
+                                    subtitleColor = Colors.grey.shade800;
+                                    line1 = 'Placa: ${a['placa_texto'] ?? a['placa'] ?? 'N/A'}';
+                                    line2 = 'Fecha: ${a['timestamp'] ?? 'N/A'}';
+                                    break;
                                   case 'SISMO':
                                     cardColor = const Color.fromARGB(240, 187, 82, 98);
                                     iconColor = Colors.red;
@@ -266,7 +318,7 @@ class _FeedPageState extends State<FeedPage> {
                                     iconColor = const Color.fromARGB(255, 1, 33, 94);
                                     alertIcon = Icons.notification_important;
                                 }
-                                
+
                                 return Card(
                                   elevation: 4,
                                   margin: const EdgeInsets.symmetric(vertical: 6),
@@ -282,23 +334,21 @@ class _FeedPageState extends State<FeedPage> {
                                       child: Icon(alertIcon, color: iconColor, size: 24),
                                     ),
                                     title: Text(
-                                      '${a['tipo']?.toUpperCase() ?? 'ALERTA'}',
+                                      titleText,
                                       style: TextStyle(fontWeight: FontWeight.bold, color: textColor, fontSize: 16),
                                     ),
                                     subtitle: Column(
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
                                         const SizedBox(height: 4),
-                                        Text('Nivel o zona: ${a['data'] ?? 'N/A'}', 
-                                             style: TextStyle(fontSize: 14, color: textColor)),
-                                        Text('Fecha: ${a['timestamp'] ?? 'N/A'}', 
-                                             style: TextStyle(fontSize: 12, color: subtitleColor)),
+                                        Text(line1, style: TextStyle(fontSize: 14, color: textColor)),
+                                        Text(line2, style: TextStyle(fontSize: 12, color: subtitleColor)),
                                       ],
                                     ),
                                     trailing: Icon(Icons.chevron_right, color: iconColor),
                                   ),
                                 );
-                              })),
+                              }))
                       ],
                     ),
                   ),
