@@ -77,6 +77,13 @@ class _FeedPageState extends State<FeedPage> {
 
   @override
   Widget build(BuildContext context) {
+    // Precomputar conjunto de tipos (tanto 'tipo' como 'clase') para el dropdown
+    final tiposSet = ((data['alertas'] as List<dynamic>? ?? [])
+        .map((a) => ((a['tipo'] ?? a['clase'])?.toString() ?? '').trim())
+        .where((s) => s.isNotEmpty)
+        .toSet())
+      .toList();
+
     return Scaffold(
       appBar: AppBar(title: Text("Alertas en Tiempo Real")),
       drawer: HomeDrawer(),
@@ -172,13 +179,11 @@ class _FeedPageState extends State<FeedPage> {
                                 value: selectedTipo,
                                 hint: Text('Selecciona tipo'),
                                 items: [
-                                  ...((data['alertas'] as List<dynamic>? ?? [])
-                                  .map((a) => a['tipo']?.toString() ?? '')
-                                  .toSet()
-                                  .map((tipo) => DropdownMenuItem<String>(
+                                  // Usar los tipos precomputados (incluye 'clase' y 'tipo')
+                                  ...tiposSet.map((tipo) => DropdownMenuItem<String>(
                                       value: tipo,
                                       child: Text(tipo.toUpperCase()),
-                                    )))
+                                    ))
                                 ],
                                 onChanged: (value) {
                                   setState(() {
@@ -230,15 +235,62 @@ class _FeedPageState extends State<FeedPage> {
                           )
                         else
                           ...((data['alertas'] as List<dynamic>? ?? [])
-                              .where((a) => selectedTipo == null || a['tipo'] == selectedTipo)
+                              // filtrar teniendo en cuenta 'tipo' o 'clase'
+                              .where((a) {
+                                final key = ((a['tipo'] ?? a['clase'])?.toString() ?? '');
+                                return selectedTipo == null || key == selectedTipo;
+                              })
                               .map((a) {
+                                // Determinar tipo real (puede venir en 'tipo' o en 'clase')
+                                final rawType = ((a['tipo'] ?? a['clase'])?.toString() ?? '').toUpperCase();
                                 Color cardColor;
                                 Color iconColor;
                                 Color textColor = Colors.black;
                                 Color subtitleColor = Colors.grey[700]!;
                                 IconData alertIcon;
-                                
-                                switch (a['tipo']?.toString().toUpperCase()) {
+                                String titleText = rawType;
+                                // Campos a mostrar por defecto
+                                String line1 = 'Detalle: ${a['data'] ?? a['data'] ?? 'N/A'}';
+                                String line2 = 'Fecha: ${a['timestamp'] ?? a['timestamp'] ?? 'N/A'}';
+
+                                // Detección de lista negra si hay una clave booleana o indicador en data
+                                final isBlacklisted = (a['lista_negra'] == true) ||
+                                                        (a['blacklist'] == true) ||
+                                                        (a['blacklisted'] == true) ||
+                                                        ((a['data'] is String) && (a['data'].toString().toLowerCase().contains('lista') || a['data'].toString().toLowerCase().contains('black')));
+
+                                switch (rawType) {
+                                  case 'ARMA_BLANCA':
+                                  case 'ARMA_FUEGO':
+                                    cardColor = const Color.fromARGB(240, 187, 82, 98);
+                                    iconColor = Colors.red;
+                                    textColor = Colors.white;
+                                    subtitleColor = Colors.white70;
+                                    alertIcon = Icons.security;
+                                    titleText = (a['tipo']?.toString().toUpperCase() ?? 'ARMA');
+                                    line1 = 'Subtipo: ${a['subtipo'] ?? 'N/A'}';
+                                    line2 = 'Fecha: ${a['timestamp'] ?? 'N/A'}';
+                                    break;
+                                  case 'PERSONA':
+                                    cardColor = Colors.deepPurple[300]!;
+                                    iconColor = Colors.purple;
+                                    alertIcon = Icons.person;
+                                    titleText = isBlacklisted ? 'PERSONA (LISTA NEGRA)' : 'PERSONA';
+                                    textColor = Colors.white;
+                                    subtitleColor = Colors.white70;
+                                    line1 = 'Nombre: ${a['data'] ?? 'N/A'}';
+                                    line2 = 'Fecha: ${a['timestamp'] ?? 'N/A'}';
+                                    break;
+                                  case 'PLACAS':
+                                    cardColor = Colors.teal.shade200;
+                                    iconColor = Colors.teal.shade900;
+                                    alertIcon = Icons.directions_car;
+                                    titleText = 'INFRACCIÓN - PLACA';
+                                    textColor = Colors.black;
+                                    subtitleColor = Colors.grey.shade800;
+                                    line1 = 'Placa: ${a['placa_texto'] ?? a['placa'] ?? 'N/A'}';
+                                    line2 = 'Fecha: ${a['timestamp'] ?? 'N/A'}';
+                                    break;
                                   case 'SISMO':
                                     cardColor = const Color.fromARGB(240, 187, 82, 98);
                                     iconColor = Colors.red;
@@ -282,17 +334,15 @@ class _FeedPageState extends State<FeedPage> {
                                       child: Icon(alertIcon, color: iconColor, size: 24),
                                     ),
                                     title: Text(
-                                      '${a['tipo']?.toUpperCase() ?? 'ALERTA'}',
+                                      titleText,
                                       style: TextStyle(fontWeight: FontWeight.bold, color: textColor, fontSize: 16),
                                     ),
                                     subtitle: Column(
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
                                         const SizedBox(height: 4),
-                                        Text('Nivel o zona: ${a['data'] ?? 'N/A'}', 
-                                             style: TextStyle(fontSize: 14, color: textColor)),
-                                        Text('Fecha: ${a['timestamp'] ?? 'N/A'}', 
-                                             style: TextStyle(fontSize: 12, color: subtitleColor)),
+                                        Text(line1, style: TextStyle(fontSize: 14, color: textColor)),
+                                        Text(line2, style: TextStyle(fontSize: 12, color: subtitleColor)),
                                       ],
                                     ),
                                     trailing: Icon(Icons.chevron_right, color: iconColor),
