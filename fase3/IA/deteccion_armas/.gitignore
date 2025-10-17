@@ -1,0 +1,42 @@
+# Entorno virtual
+venv/
+env/
+ENV/
+
+# Dataset (pesado)
+*.zip
+knife.v1i.yolov8/train/
+knife.v1i.yolov8/valid/
+knife.vii.yolov8/train/
+knife.vii.yolov8/valid/
+
+cold_weapons.v6-v2.yolov8/train/
+cold_weapons.v6-v2.yolov8/valid/
+
+# Cache de entrenamiento (no necesario)
+runs/detect/weapon_detection/weights/last.pt
+runs/detect/*/train/
+runs/detect/*/labels.jpg
+runs/detect/*/results.png
+runs/detect/*/confusion_matrix.png
+
+# Archivos de cache Python
+__pycache__/
+*.pyc
+*.pyo
+*.cache
+
+# Capturas y videos generados
+captura_*.jpg
+video_*.avi
+*.mp4
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Sistema
+.DS_Store
+Thumbs.db
