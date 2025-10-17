@@ -1,0 +1,13 @@
+train: ../train/images
+val: ../valid/images
+test: ../test/images
+
+nc: 1
+names: ['Placas']
+
+roboflow:
+  workspace: placas-7gsjh
+  project: deteccion-de-placas-vpamf
+  version: 2
+  license: CC BY 4.0
+  url: https://universe.roboflow.com/placas-7gsjh/deteccion-de-placas-vpamf/dataset/2
