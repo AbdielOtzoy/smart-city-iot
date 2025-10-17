@@ -271,11 +271,11 @@ class _FeedPageState extends State<FeedPage> {
                                     line1 = 'Subtipo: ${a['subtipo'] ?? 'N/A'}';
                                     line2 = 'Fecha: ${a['timestamp'] ?? 'N/A'}';
                                     break;
-                                  case 'PERSONA':
+                                  case 'LADRON':
                                     cardColor = Colors.deepPurple[300]!;
                                     iconColor = Colors.purple;
                                     alertIcon = Icons.person;
-                                    titleText = isBlacklisted ? 'PERSONA (LISTA NEGRA)' : 'PERSONA';
+                                    titleText = isBlacklisted ? 'LADRÓN (LISTA NEGRA)' : 'LADRÓN';
                                     textColor = Colors.white;
                                     subtitleColor = Colors.white70;
                                     line1 = 'Nombre: ${a['data'] ?? 'N/A'}';
